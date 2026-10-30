@@ -1,0 +1,224 @@
+diff --git a/runtime/port/compat.h b/runtime/port/compat.h
+index 3c58c67..84ab3f5 100644
+--- a/runtime/port/compat.h
++++ b/runtime/port/compat.h
+@@ -27,6 +27,10 @@
+ #include <ctype.h>
+ #include <errno.h>
+ #include <fcntl.h>
++#ifdef __3DS__
++#include <unistd.h>      /* before the renames: newlib's lseek takes a 64-bit off_t */
++#include <pthread.h>
++#endif
+ #include "portgame.h"
+ #include "sys/enhance.h"                /* ENHANCED(i): the port's enhancements, all off by default */
+ #include "sys/cheat.h"                  /* port_cheat_point: a test's cheats (refused unless asked for) */
+diff --git a/runtime/port/mem/frame.c b/runtime/port/mem/frame.c
+index c223eea..60b2d98 100644
+--- a/runtime/port/mem/frame.c
++++ b/runtime/port/mem/frame.c
+@@ -10,7 +10,7 @@
+    checks it on the desktop) has the 64 KB once: the game's C says where it relies on the wrap
+    (EMS_WRAP and EMS_ADD, portable.h). On the desktop the 64 KB after it are inaccessible,
+    so a pointer that still runs past the end faults at once and sys/crash.c reports where. */
+-#if defined(__EMSCRIPTEN__)
++#if defined(__EMSCRIPTEN__) || defined(__3DS__)
+ #include <stdlib.h>
+ 
+ unsigned char *port_frame_alloc(void)
+diff --git a/runtime/port/sound/audio.c b/runtime/port/sound/audio.c
+index 53f3de0..471e039 100644
+--- a/runtime/port/sound/audio.c
++++ b/runtime/port/sound/audio.c
+@@ -27,6 +27,19 @@
+ #endif
+ #include "aildrv.h"
+ #include "plat.h"
++#ifdef __3DS__
++/* 3DS: the synthesis runs on a thread of its own (the end of this file); the drivers' writes
++   reach these functions, renamed, through a queue in the order the drivers made them */
++#define audio_music_device synth_music_device
++#define audio_opl_write synth_opl_write
++#define audio_mpu_byte synth_mpu_byte
++#define audio_dac_play synth_dac_play
++#define audio_dac_stop synth_dac_stop
++#define audio_dac_level synth_dac_level
++#define audio_speaker synth_speaker
++#define audio_render_to synth_render_to
++static void synth_queue_start(void);
++#endif
+ #ifdef AUDIO_HAVE_OPL
+ #include "opl3.h"
+ #endif
+@@ -190,7 +203,15 @@ void audio_start(void)
+         }
+     }
+     if (use_device && getenv("PORT_AUDIO_TAP")) tap = fopen(getenv("PORT_AUDIO_TAP"), "wb");     /* a test switch */
+-    if (use_device && plat_audio_open(AUDIO_RATE, fill)) port_log("audio: no audio device; running silent\n");
++    if (use_device && plat_audio_open(AUDIO_RATE, fill)) {
++        port_log("audio: no audio device; running silent\n");
++#ifdef __3DS__
++        use_device = 0;                 /* 3DS: no one hears it, so the synthesis is skipped (as --no-audio) */
++#endif
++    }
++#ifdef __3DS__
++    else synth_queue_start();
++#endif
+ }
+ 
+ /* 1 if this build has the MT-32 emulator and dir (a folder, or a file in it) holds a CM-32L or an
+@@ -426,3 +447,132 @@ void audio_render_to(uint64_t t_us)
+         rendered += (uint64_t)n;
+     }
+ }
++
++#ifdef __3DS__
++/* ---- the 3DS's synthesis thread ------------------------------------------------------------
++   The drivers run on the timer thread, on the game's core; Nuked OPL3's synthesis there took
++   the game's time. Here every write the drivers make, and each tick's "render up to t", goes
++   into a queue in order, and a thread on another core (plat_thread_start's "synth") plays them
++   back through the functions above: the same output, the same timing in the AIL clock, a
++   little later in real time. With no device (synth_queued 0) the calls go straight through. */
++#undef audio_music_device
++#undef audio_opl_write
++#undef audio_mpu_byte
++#undef audio_dac_play
++#undef audio_dac_stop
++#undef audio_dac_level
++#undef audio_speaker
++#undef audio_render_to
++#include <3ds.h>
++
++enum { EV_RENDER, EV_DEVICE, EV_OPL, EV_MPU, EV_DACPLAY, EV_DACSTOP, EV_DACLEVEL, EV_SPEAKER };
++struct ev { uint8_t type, chip; uint16_t reg; uint32_t a, b; uint64_t t; uint8_t *data; };
++#define QN 32768
++static struct ev q[QN];
++static _Atomic uint32_t q_head, q_tail;
++static LightLock q_lock;
++static int synth_queued;
++static _Atomic unsigned q_dropped;
++
++static void push(const struct ev *e)
++{
++    uint32_t h;
++    if (!synth_queued) return;
++    LightLock_Lock(&q_lock);
++    h = atomic_load(&q_head);
++    if (h - atomic_load(&q_tail) < QN) {
++        q[h % QN] = *e;
++        atomic_store(&q_head, h + 1);
++    } else {
++        if (e->data) free(e->data);
++        atomic_fetch_add(&q_dropped, 1);
++    }
++    LightLock_Unlock(&q_lock);
++}
++
++static int synth_thread(void *arg)
++{
++    (void)arg;
++    for (;;) {
++        uint32_t t = atomic_load(&q_tail), h = atomic_load(&q_head);
++        if (t == h) { svcSleepThread(2000000); continue; }
++        while (t != h) {
++            struct ev *e = &q[t % QN];
++            switch (e->type) {
++            case EV_RENDER: synth_render_to(e->t); break;
++            case EV_DEVICE: synth_music_device((int)e->a); break;
++            case EV_OPL: synth_opl_write(e->chip, e->reg, e->a); break;
++            case EV_MPU: synth_mpu_byte(e->a); break;
++            case EV_DACPLAY: synth_dac_play(e->data, e->a, e->b, e->t); free(e->data); break;
++            case EV_DACSTOP: synth_dac_stop(e->t); break;
++            case EV_DACLEVEL: synth_dac_level(e->a, e->b, e->t); break;
++            case EV_SPEAKER: synth_speaker(e->a, e->t); break;
++            }
++            t++;
++        }
++        atomic_store(&q_tail, t);
++    }
++    return 0;
++}
++
++static void synth_queue_start(void)
++{
++    LightLock_Init(&q_lock);
++    synth_queued = 1;
++    if (plat_thread_start("synth", synth_thread, NULL)) synth_queued = 0;
++}
++
++unsigned audio_queue_depth(void) { return atomic_load(&q_head) - atomic_load(&q_tail); }
++unsigned audio_queue_dropped(void) { return atomic_load(&q_dropped); }
++
++void audio_music_device(int kind)
++{
++    struct ev e = { EV_DEVICE };
++    if (!synth_queued) { synth_music_device(kind); return; }
++    e.a = (uint32_t)kind; push(&e);
++}
++void audio_opl_write(int chip, unsigned reg, unsigned val)
++{
++    struct ev e = { EV_OPL };
++    if (!synth_queued) { synth_opl_write(chip, reg, val); return; }
++    e.chip = (uint8_t)chip; e.reg = (uint16_t)reg; e.a = val; push(&e);
++}
++void audio_mpu_byte(unsigned b)
++{
++    struct ev e = { EV_MPU };
++    if (!synth_queued) { synth_mpu_byte(b); return; }
++    e.a = b; push(&e);
++}
++void audio_dac_play(const uint8_t *data, uint32_t n, uint32_t rate, uint64_t t_us)
++{
++    struct ev e = { EV_DACPLAY };
++    if (!synth_queued) { synth_dac_play(data, n, rate, t_us); return; }
++    if (!n || !(e.data = malloc(n))) return;
++    memcpy(e.data, data, n);
++    e.a = n; e.b = rate; e.t = t_us; push(&e);
++}
++void audio_dac_stop(uint64_t t_us)
++{
++    struct ev e = { EV_DACSTOP };
++    if (!synth_queued) { synth_dac_stop(t_us); return; }
++    e.t = t_us; push(&e);
++}
++void audio_dac_level(unsigned left, unsigned right, uint64_t t_us)
++{
++    struct ev e = { EV_DACLEVEL };
++    if (!synth_queued) { synth_dac_level(left, right, t_us); return; }
++    e.a = left; e.b = right; e.t = t_us; push(&e);
++}
++void audio_speaker(unsigned hz, uint64_t t_us)
++{
++    struct ev e = { EV_SPEAKER };
++    if (!synth_queued) { synth_speaker(hz, t_us); return; }
++    e.a = hz; e.t = t_us; push(&e);
++}
++void audio_render_to(uint64_t t_us)
++{
++    struct ev e = { EV_RENDER };
++    if (!synth_queued) { synth_render_to(t_us); return; }
++    e.t = t_us; push(&e);
++}
++#endif
+diff --git a/runtime/port/sys/crash.c b/runtime/port/sys/crash.c
+index 2ebdafe..fc99c4c 100644
+--- a/runtime/port/sys/crash.c
++++ b/runtime/port/sys/crash.c
+@@ -15,7 +15,7 @@
+    exception no thread handled, whichever thread it was on (and then hands it to the filter set
+    before, the C runtime's). The report is written once, however many of these see the fault, and
+    a second thread that faults waits for it (report). */
+-#ifndef __EMSCRIPTEN__
++#if !defined(__EMSCRIPTEN__) && !defined(__3DS__)
+ #undef _POSIX_C_SOURCE
+ #define _DARWIN_C_SOURCE
+ #include <signal.h>
+@@ -140,7 +140,7 @@ void port_backtrace(void)
+     backtrace_symbols_fd(frames, n, 2);
+ }
+ 
+-#else   /* __EMSCRIPTEN__ */
++#else   /* __EMSCRIPTEN__, __3DS__ */
+ #include <unistd.h>
+ 
+ void port_crash_handlers(void) {}

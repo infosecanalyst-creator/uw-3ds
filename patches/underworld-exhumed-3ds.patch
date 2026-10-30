@@ -1,0 +1,212 @@
+diff --git a/exhume b/exhume
+--- a/exhume
++++ b/exhume
+@@ -1 +1 @@
+-Subproject commit a34316463c230bafa3d4f0aa3b894a574e5fc738
++Subproject commit a34316463c230bafa3d4f0aa3b894a574e5fc738-dirty
+diff --git a/uw1/src/conv/CONVERSE.C b/uw1/src/conv/CONVERSE.C
+index d80f64a..26d808a 100644
+--- a/uw1/src/conv/CONVERSE.C
++++ b/uw1/src/conv/CONVERSE.C
+@@ -534,6 +534,9 @@ void far play_respond(char far *s)
+ /* The player's chosen line, in the conversation scroll in colour \1. */
+ void far play_say(char far *s)
+ {
++#ifdef __3DS__
++    port_said_hook(s);  /* 3DS port only: the journal's record of the answer chosen */
++#endif
+     str_copy(conv_buffer, "\\1");
+     str_cat(conv_buffer, s);
+     str_cat(conv_buffer, "\\0\n");
+diff --git a/uw1/src/game/CHARGEN.C b/uw1/src/game/CHARGEN.C
+index 4b3e846..6ca74e4 100644
+--- a/uw1/src/game/CHARGEN.C
++++ b/uw1/src/game/CHARGEN.C
+@@ -438,6 +438,9 @@ int far pickopt(struct ChrOpt far *opt)
+         x = string_width(s) + 0xA8;
+         y = 0x6B;
+         buf[1] = 0;
++#ifdef __3DS__
++        port_text_request(s, 0x1D, 0);  /* 3DS port only: the system keyboard types the name */
++#endif
+         while (((c = mouse_get_input()) != '\r' || empty) && c != 0x1B) {
+             if (c >= ' ' && c <= '~' && x < 0x12E && len < 0x1D) {
+                 buf[0] = c;
+diff --git a/uw1/src/game/GAMEWRAP.C b/uw1/src/game/GAMEWRAP.C
+index 2e815a0..c321a71 100644
+--- a/uw1/src/game/GAMEWRAP.C
++++ b/uw1/src/game/GAMEWRAP.C
+@@ -293,6 +293,12 @@ char far SaveGame(char slot, register char *desc)
+     p[1] = 0;
+     scroll_clear(1);
+     game_sprint(0xA8);                  /* "Please enter a save file description:" */
++#ifdef __3DS__
++    if (port_quicksave_desc) {      /* 3DS port only: a quicksave names itself, asking nothing */
++        strcpy(desc, port_quicksave_desc);
++        scroll_print(desc);
++    } else
++#endif
+     if (wdialog(0, desc, desc, 1, 0x1E) == 0x1B)
+         goto fail;
+     scroll_print("\n");
+diff --git a/uw1/src/game/MAINLOOP.C b/uw1/src/game/MAINLOOP.C
+index 5b1595b..76d40b8 100644
+--- a/uw1/src/game/MAINLOOP.C
++++ b/uw1/src/game/MAINLOOP.C
+@@ -31,6 +31,9 @@ void far mainloop(void)
+     {
+ #ifndef __TURBOC__
+         port_cheat_point();     /* port only: a test's cheats (Exhume's sys/cheat.c), between passes */
++#endif
++#ifdef __3DS__
++        port_front_point();     /* 3DS port only: the dashboard's snapshot and requests, between passes */
+ #endif
+         if (changed)
+             do_changes();
+diff --git a/uw1/src/port/portgame.h b/uw1/src/port/portgame.h
+index 9de9f27..e65827b 100644
+--- a/uw1/src/port/portgame.h
++++ b/uw1/src/port/portgame.h
+@@ -87,5 +87,13 @@ enum { ENH_SKIP_INTRO, ENH_WRAP_MENU, ENH_FAST_PANELS, ENH_FREE_HEADING, ENH_SUB
+ /* --enhance modern-keys: the key code a lone left Shift gives (ui/MOUSE.C), unused by the game */
+ #define PORT_KEY_LSHIFT 0xBF
+ int port_pitch_bound(void);                 /* game/PLAYER.C: the pitch's bound either way */
++#ifdef __3DS__
++/* the 3DS front end (3ds/game/uwstate.c) */
++void port_front_point(void);
++void port_scroll_hook(const char *s, int mode);
++void port_said_hook(const char *s);
++extern const char *port_quicksave_desc;  /* SaveGame's description when set: no prompt */
++void port_text_request(const char *prompt, int maxlen, int digits);  /* the game waits for typed text */
++#endif
+ 
+ #endif
+diff --git a/uw1/src/ui/SCROLLIO.C b/uw1/src/ui/SCROLLIO.C
+index bc22cc7..76b0bdc 100644
+--- a/uw1/src/ui/SCROLLIO.C
++++ b/uw1/src/ui/SCROLLIO.C
+@@ -190,6 +190,9 @@ int far scroll_print(char far *s)
+     register int remaining;
+     char saved;
+     int chunklen;
++#ifdef __3DS__
++    port_scroll_hook(s, scroll_mode);   /* 3DS port only: the dashboard's message log */
++#endif
+     char pad1;                 /* match: unused; the EXE reserves it too (frame 0x36) */
+     char sentinel;
+ 
+@@ -540,6 +543,9 @@ int far wdialog(char *prompt, char *initial, char *result, char anychar, int max
+     y = scroll->cur_y;
+     mouse_hide();
+     mouse_release(0);
++#ifdef __3DS__
++    port_text_request(prompt, maxlen, !anychar);   /* 3DS port only: the system keyboard types it */
++#endif
+     while ((key = mouse_get_input()) != 13 && key != 27 && key != 1 && key != 2 && key != 3) {
+         strcpy(tmp, text);
+         tmp[abs(pos)] = 0;
+diff --git a/uw2/src/conv/CONVERSE.C b/uw2/src/conv/CONVERSE.C
+index 70f2b03..db3da62 100644
+--- a/uw2/src/conv/CONVERSE.C
++++ b/uw2/src/conv/CONVERSE.C
+@@ -519,6 +519,9 @@ void far play_respond(char far *s)
+ /* The player's chosen line, in the conversation scroll in colour \1. */
+ void far play_say(char far *s)
+ {
++#ifdef __3DS__
++    port_said_hook(s);  /* 3DS port only: the journal's record of the answer chosen */
++#endif
+     str_copy(conv_buffer, "\\1");
+     str_cat(conv_buffer, s);
+     str_cat(conv_buffer, "\\0\n");
+diff --git a/uw2/src/game/CHARGEN.C b/uw2/src/game/CHARGEN.C
+index 66e7c1d..4ee014a 100644
+--- a/uw2/src/game/CHARGEN.C
++++ b/uw2/src/game/CHARGEN.C
+@@ -437,6 +437,9 @@ int far pickopt(struct ChrOpt far *opt)
+         x = string_width(s) + 0xA8;
+         y = 0x6B;
+         buf[1] = 0;
++#ifdef __3DS__
++        port_text_request(s, 0x1D, 0);  /* 3DS port only: the system keyboard types the name */
++#endif
+         while ((c = mouse_get_input()) != '\r' || empty) {
+             if (isspace(c) && len == 0)
+                 continue;
+diff --git a/uw2/src/game/GAMEWRAP.C b/uw2/src/game/GAMEWRAP.C
+index a99cc40..a210a98 100644
+--- a/uw2/src/game/GAMEWRAP.C
++++ b/uw2/src/game/GAMEWRAP.C
+@@ -274,6 +274,12 @@ int far SaveGame(char slot, char *desc)
+     strcpy(path, HomeDir);
+     scroll_clear(1);
+     game_sprint(0xB7);                  /* "Please enter a save file description:" */
++#ifdef __3DS__
++    if (port_quicksave_desc) {      /* 3DS port only: a quicksave names itself, asking nothing */
++        strcpy(desc, port_quicksave_desc);
++        scroll_print(desc);
++    } else
++#endif
+     if (wdialog(0, desc, desc, 1, 0x1E) == 0x1B) {
+         ret = 2;
+         goto fail;
+diff --git a/uw2/src/game/MAINLOOP.C b/uw2/src/game/MAINLOOP.C
+index 09799de..0634127 100644
+--- a/uw2/src/game/MAINLOOP.C
++++ b/uw2/src/game/MAINLOOP.C
+@@ -31,6 +31,9 @@ void far mainloop(void)
+     {
+ #ifndef __TURBOC__
+         port_cheat_point();     /* port only: a test's cheats (Exhume's sys/cheat.c), between passes */
++#endif
++#ifdef __3DS__
++        port_front_point();     /* 3DS port only: the dashboard's snapshot and requests, between passes */
+ #endif
+         do_changes();
+         input_dispatch(inplist);
+diff --git a/uw2/src/port/portgame.h b/uw2/src/port/portgame.h
+index 80406a9..d4b19f4 100644
+--- a/uw2/src/port/portgame.h
++++ b/uw2/src/port/portgame.h
+@@ -70,5 +70,13 @@ enum { ENH_SKIP_INTRO, ENH_WRAP_MENU, ENH_FAST_PANELS, ENH_FREE_HEADING, ENH_SUB
+ /* --enhance modern-keys: the key code a lone left Shift gives (ui/MOUSE.C), unused by the game */
+ #define PORT_KEY_LSHIFT 0xBF
+ int port_pitch_bound(void);                 /* game/PLAYER.C: the pitch's bound either way */
++#ifdef __3DS__
++/* the 3DS front end (3ds/game/uwstate.c) */
++void port_front_point(void);
++void port_scroll_hook(const char *s, int mode);
++void port_said_hook(const char *s);
++extern const char *port_quicksave_desc;  /* SaveGame's description when set: no prompt */
++void port_text_request(const char *prompt, int maxlen, int digits);  /* the game waits for typed text */
++#endif
+ 
+ #endif
+diff --git a/uw2/src/ui/SCROLL.C b/uw2/src/ui/SCROLL.C
+index f8a3d0c..a9b6a13 100644
+--- a/uw2/src/ui/SCROLL.C
++++ b/uw2/src/ui/SCROLL.C
+@@ -167,6 +167,9 @@ int far scroll_print(char far *s)
+     char pad1;                 /* match: unused; the EXE reserves it too (frame 0x36) */
+     char sentinel;
+ 
++#ifdef __3DS__
++    port_scroll_hook(s, scroll_mode);   /* 3DS port only: the dashboard's message log */
++#endif
+     if (scrmode != 1 && scrmode != 4)
+         return -1;
+ 
+diff --git a/uw2/src/ui/SCROLLIO.C b/uw2/src/ui/SCROLLIO.C
+index 348b79a..79763d3 100644
+--- a/uw2/src/ui/SCROLLIO.C
++++ b/uw2/src/ui/SCROLLIO.C
+@@ -180,6 +180,9 @@ int far wdialog(char *prompt, char *initial, char *result, char anychar, int max
+     y = scroll->cur_y;
+     mouse_hide();
+     mouse_release(0);
++#ifdef __3DS__
++    port_text_request(prompt, maxlen, !anychar);   /* 3DS port only: the system keyboard types it */
++#endif
+     while ((key = mouse_get_input()) != 13 && key != 27 && key != 1 && key != 2 && key != 3) {
+         strcpy(tmp, text);
+         tmp[abs(pos)] = 0;

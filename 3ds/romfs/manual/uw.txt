@@ -1,0 +1,98 @@
+# Welcome
+This is the Stygian Abyss on your New 3DS: the original game, decompiled byte for byte by the Underworld Exhumed project, running natively with a 3DS front end.
+
+The bottom screen is the game. Play it with the stylus exactly as you would with a mouse: tap to use, tap and drag to move items, and hold ZL while tapping for the right mouse button.
+
+The top screen is your dashboard. SELECT changes its page; START opens the port menu.
+
+Use the circle pad to change pages of this manual, and B or START to close it.
+
+# Buttons
+Circle Pad: walk forward (push all the way to run), back, turn left and right.
+C-stick: slide left and right, look up and down.
+L: attack. Hold it to draw back a stronger blow, release to swing.
+R or A: use whatever is under the cursor. On a person, talk to them.
+X: look at whatever is under the cursor.
+Y: the game's own map (where you can write notes).
+ZR: jump.
+ZL (held): the stylus becomes the right mouse button.
+B: escape (close a scroll, leave a menu).
+D-pad: cast the spell on that hotkey (see Magic).
+SELECT: the next dashboard page. Hold SELECT and press L or R to go back or forward.
+START: the port menu.
+
+# The cursor
+Many actions work on whatever is under the game's cursor. The cursor stays wherever you last touched the screen.
+
+When you walk with the circle pad after touching the screen, the cursor goes back to the centre of the view, so R and X act on what is straight ahead of you.
+
+# Dashboard: Map
+A live map of the level you are on, drawn from the game's own record of the squares you have seen. The arrow is you; it turns as you turn.
+
+Stairs, doors and other things you have seen are marked. Notes you write on the game's map (Y) appear here as small gold pins.
+
+In the port menu you can zoom the map and look at other levels.
+
+# Dashboard: Status
+Your vitality, mana, level and experience, how hungry and tired you are, any poison, your light, and the spells working on you.
+
+# Dashboard: Log
+Every message the scroll at the bottom of the game screen has shown, so nothing is lost when it scrolls away. Use the circle pad while the port menu is open to read back.
+
+# Dashboard: Journal
+Every conversation you have had, by the person you spoke to: what they said and what you answered. Reread clues instead of writing them on paper. The journal is kept with your saved games.
+
+# Dashboard: Spells
+Your spell book: every spell whose runes you have learned, with its runes, and which D-pad direction it is on.
+
+# Dashboard: 3D view
+An optional page that shows the game's view raised above the screen in stereoscopic 3D. Turn up the 3D slider to see it.
+
+# Magic
+To cast a spell normally, tap runes in your rune bag to put them on the shelf, then tap the shelf.
+
+Spell hotkeys: open the port menu, choose Spell hotkeys, tap a spell from your book and then tap the D-pad direction to put it on. In play, press that direction to cast it at once. A spell whose runes you do not all have is refused with a sound.
+
+The Spells page of the dashboard lists every hotkey.
+
+# Saving
+Quicksave and Quickload are in the port menu. They use the game's own save slot 4, so they also show in the game's own Save and Restore screens.
+
+Closing the 3DS lid pauses the game.
+
+# The port menu
+START opens it. The game waits while it is open.
+Resume: back to the game.
+Quicksave, Quickload: the game's slot 4.
+Spell hotkeys: put spells on the D-pad.
+Map: zoom in and out, and look at other levels.
+Manual: this book.
+Settings: the port's settings: sound, the enhancements and fixes.
+Quit: leave the game (save first).
+
+# Enhancements and fixes
+These start turned on. You can turn any of them off in Settings, under Enhancements.
+
+Modern keys and rune keys: what lets the 3DS buttons work. Leave them on.
+Tidy objects: fixes the original's "Problems in object list" bug, which could lose items.
+Restore at rest: a game restored while falling starts standing still.
+Perspective and full sprites: walls, floors and creatures stay straight when you look up and down.
+Fast panels and wrap menus: small conveniences.
+
+Wide pitch (look further up and down) and free heading (sliding along a wall does not turn you) are off, as in the original; turn them on if you like.
+
+# Your game files
+The port needs your own copy of the game (the GOG release). Copy the game's folder, the one that holds UW.EXE, DATA, CRIT, CUTS and SOUND, to the SD card as /3ds/uw1/game. GOG's game.gog CD image works too.
+
+Saved games and settings are kept in /3ds/uw1/home. The log of the last run is /3ds/uw1/log.txt.
+
+# Credits
+The game: Ultima Underworld, Blue Sky Productions and Origin Systems, 1992. Copyright Electronic Arts. Bring your own copy.
+
+Underworld Exhumed: the decompilation and the native port, by abedegno and contributors, MIT licence.
+
+Enhancements: ideas and layouts from John Glassmyer's UltimaHacks and SiENcE's uwpatch.
+
+Sound: Nuked OPL3 by nukeykt (LGPL 2.1).
+
+3DS port: built with devkitARM, libctru and citro2d.

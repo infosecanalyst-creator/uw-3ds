@@ -1,0 +1,7 @@
+build/
+upstream/
+vendor/
+*.3dsx
+*.elf
+*.smdh
+__pycache__/
