@@ -1,6 +1,14 @@
 /* front.c: the 3DS front end. The buttons as the game's keys (the port's modern-keys and
-   rune-keys enhancements), the spell hotkeys, the dashboard's pages on the top screen, and the
-   port menu on the bottom screen (START), which pauses the game.
+   rune-keys enhancements), the spell hotkeys, the screens' layout and the port menu (START),
+   which pauses the game.
+
+   Layout: while you explore (and talk), the top screen is the game's 3D view, about twice its
+   size, with stereoscopic depth from the 3D slider. The bottom screen is the whole game screen,
+   played with the stylus as the mouse (inventory, icons, runes, the scroll, the small view to
+   tap things in the world), above a strip of tabs: Game, Map, Status, Log, Journal, Spells. The
+   other tabs swap the dashboard's pages in for the game on the bottom screen; SELECT steps
+   through them. Before you are in the Abyss (the menus, character creation) the game fills the
+   bottom screen and the top screen shows the title.
 
    Buttons: Circle Pad walk/run/back and turn; C-stick slide and look up and down; L attack
    (held to charge); R or A use, X look (at the cursor); Y the game's map; ZR jump; ZL held
@@ -18,8 +26,13 @@
 #include "front.h"
 #include "strings3ds.h"
 
-enum { TAB_MAP, TAB_STATUS, TAB_LOG, TAB_JOURNAL, TAB_SPELLS, TAB_VIEW, TABS };
-static const char *const tab_names[TABS] = { "Map", "Status", "Log", "Journal", "Spells", "3D view" };
+enum { TAB_GAME, TAB_MAP, TAB_STATUS, TAB_LOG, TAB_JOURNAL, TAB_SPELLS, TABS };
+static const char *const tab_names[TABS] = { "Game", "Map", "Status", "Log", "Journal", "Spells" };
+
+/* the bottom screen: the game (or a page) above the tab strip */
+#define STRIP_H 26
+#define PG_W BOT_W
+#define PG_H (BOT_H - STRIP_H)
 enum { OV_NONE, OV_MENU, OV_HOTKEYS, OV_MAP, OV_MANUAL, OV_QUIT };
 
 static int tab, overlay;
@@ -59,7 +72,7 @@ static void opts_save(void)
 {
     FILE *f = fopen(OPTS, "w");
     if (!f) return;
-    fprintf(f, "tab=%d\nzoom=%d\nhotkeys=%d,%d,%d,%d\n", tab, map_zoom_level(), hotkey[0], hotkey[1], hotkey[2], hotkey[3]);
+    fprintf(f, "page=%d\nzoom=%d\nhotkeys=%d,%d,%d,%d\n", tab, map_zoom_level(), hotkey[0], hotkey[1], hotkey[2], hotkey[3]);
     fclose(f);
 }
 
@@ -70,7 +83,7 @@ static void opts_load(void)
     if (!f) return;
     while (fgets(l, sizeof l, f)) {
         int z;
-        if (sscanf(l, "tab=%d", &tab) == 1 && (tab < 0 || tab >= TABS)) tab = 0;
+        if (sscanf(l, "page=%d", &tab) == 1 && (tab < 0 || tab >= TABS)) tab = 0;
         if (sscanf(l, "zoom=%d", &z) == 1) map_zoom(z - map_zoom_level());
         sscanf(l, "hotkeys=%d,%d,%d,%d", &hotkey[0], &hotkey[1], &hotkey[2], &hotkey[3]);
     }
@@ -216,17 +229,34 @@ static void tab_scroll(int d, int lr)
     if (spells_scroll < 0) spells_scroll = 0;
 }
 
-static int menu_input(u32 down, u32 held, circlePosition cp, int touching, touchPosition t);
+static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, int touching, touchPosition t);
+
+float front_game_height(void)
+{
+    const struct uwsnap *s = uw_snap();
+    if (overlay) return BOT_H;                  /* the port menu covers whatever is under it */
+    if (!s->in_game) return BOT_H;              /* menus, character creation: the whole screen */
+    return tab == TAB_GAME ? PG_H : 0;
+}
 
 int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs, int touching, touchPosition t)
 {
     static unsigned scroll_at;
+    static int was_touching, touch_mine;
     const char *r = uw_request_result();
+    int mine;
     if (r) say(r);
     seq_run();
     ui_touch(touching, t.px, t.py);
-    if (overlay) return menu_input(down, held, cp, touching, t);
-    if (touching) moved_since_touch = 0;
+    if (overlay) { was_touching = touching; touch_mine = 0; return menu_input(down, held, cp, cs, touching, t); }
+    /* a touch belongs to the front end (the tabs, a page) or to the game, by where it started */
+    if (touching && !was_touching) {
+        float gh = front_game_height();
+        touch_mine = gh <= 0 || t.py >= gh;
+    }
+    mine = (touching || was_touching) && touch_mine;
+    was_touching = touching;
+    if (touching && !mine) moved_since_touch = 0;
     if (down & KEY_START) { open_menu(OV_MENU); return 1; }
     /* SELECT: alone, the next page; held, the sticks and L R work the page */
     if (held & KEY_SELECT) {
@@ -239,11 +269,11 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
         }
     }
     if (up & KEY_SELECT) {
-        if (!select_used) { tab = (tab + 1) % TABS; opts_save(); }
+        if (!select_used && uw_snap()->in_game) { tab = (tab + 1) % TABS; opts_save(); }
         select_used = 0;
     }
     stick_keys(cp, cs, (held & KEY_SELECT) != 0);
-    if (held & KEY_SELECT) return 0;
+    if (held & KEY_SELECT) return mine;
     p3_key(K_SPACE, (held & KEY_L) != 0);       /* attack, held to charge */
     if (down & (KEY_R | KEY_A)) at_cursor(K_E);
     if (down & KEY_X) at_cursor(K_Q);
@@ -254,7 +284,7 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
     if (down & KEY_DRIGHT) cast_hotkey(1);
     if (down & KEY_DDOWN) cast_hotkey(2);
     if (down & KEY_DLEFT) cast_hotkey(3);
-    return 0;
+    return mine;
 }
 
 unsigned front_touch_button(void)
@@ -294,7 +324,7 @@ void front_tick(void)
     if (p3_frame() - last_flush > 120) { uw_journal_flush(); last_flush = p3_frame(); }
 }
 
-/* ---- the top screen ---- */
+/* ---- the dashboard's pages, on the bottom screen above the tabs (PG_W x PG_H) ---- */
 
 static const char *spell_name(int id)
 {
@@ -305,88 +335,89 @@ static const char *spell_name(int id)
     return b[k];
 }
 
-static void header(const char *title)
+static void empty_page(const char *msg)
 {
-    int i;
-    float x = 6;
-    ui_rect(0, 0, TOP_W, 18, COL_PANEL);
-    for (i = 0; i < TABS; i++) {
-        float w = ui_text_width(0.42f, tab_names[i]) + 12;
-        if (i == tab) ui_rect(x - 2, 1, w, 16, COL_PANEL2);
-        ui_text(x + 4, 2, 0.42f, i == tab ? COL_GOLD : COL_DIM, 0, 0, tab_names[i]);
-        x += w + 2;
-    }
-    (void)title;
+    ui_text(16, 40, 0.48f, COL_DIM, C2D_WordWrap, PG_W - 32, msg);
 }
 
 static void draw_status(void)
 {
     const struct uwsnap *s = uw_snap();
-    char b[64], nm[40];
+    char b[96], nm[40];
     int i, y;
     static const char *const hunger_txt[] = { "starving", "famished", "very hungry", "hungry", "peckish", "satisfied", "fed", "well fed", "full" };
     static const char *const tired_txt[] = { "rested", "awake", "tired", "very tired", "drowsy", "exhausted" };
-    if (!s->in_game) { ui_text(16, 40, 0.5f, COL_DIM, 0, 0, "Your status shows once you are in the Abyss."); return; }
+    if (!s->in_game) { empty_page("Your status shows once you are in the Abyss."); return; }
     uw_name(2, 0x17 + s->pclass, nm, sizeof nm);
-    ui_textf(8, 22, 0.55f, COL_GOLD, "%s", s->name);
-    ui_textf(8, 40, 0.42f, COL_DIM, "%s, level %d   %lu experience   %d skill points", nm, s->xlevel,
-             (unsigned long)(s->exp / 10), s->skill_points);
+    ui_text_fit(8, 3, 0.52f, COL_GOLD, 0, PG_W - 16, s->name);
+    snprintf(b, sizeof b, "%s, level %d   %lu exp   %d skill points", nm, s->xlevel, (unsigned long)(s->exp / 10), s->skill_points);
+    ui_text_fit(8, 21, 0.4f, COL_DIM, 0, PG_W - 16, b);
     snprintf(b, sizeof b, "Vitality %d / %d", s->hp, s->hpmax);
-    ui_bar(8, 56, 186, 16, s->hpmax ? (float)s->hp / s->hpmax : 0, s->poison ? COL_POISON : COL_RED, b);
+    ui_bar(8, 37, 148, 16, s->hpmax ? (float)s->hp / s->hpmax : 0, s->poison ? COL_POISON : COL_RED, b);
     snprintf(b, sizeof b, "Mana %d / %d", s->mana, s->manamax);
-    ui_bar(206, 56, 186, 16, s->manamax ? (float)s->mana / s->manamax : 0, COL_BLUE, b);
+    ui_bar(164, 37, 148, 16, s->manamax ? (float)s->mana / s->manamax : 0, COL_BLUE, b);
     i = s->hunger / 0x1E; if (i > 8) i = 8;
     y = s->fatigue / 0x17; if (y > 5) y = 5;
-    ui_textf(8, 76, 0.42f, COL_TEXT, "You are %s and %s.%s%s", hunger_txt[i], tired_txt[y],
-             s->poison ? "  Poisoned!" : "", s->drunk ? "  Drunk." : "");
-    ui_textf(8, 91, 0.42f, COL_TEXT, "Strength %d   Dexterity %d   Intelligence %d   Light %d", s->str, s->dex, s->intel, s->light);
+    snprintf(b, sizeof b, "You are %s and %s.%s%s", hunger_txt[i], tired_txt[y], s->poison ? "  Poisoned!" : "", s->drunk ? "  Drunk." : "");
+    ui_text_fit(8, 57, 0.4f, COL_TEXT, 0, PG_W - 16, b);
+    snprintf(b, sizeof b, "Str %d   Dex %d   Int %d   Light %d", s->str, s->dex, s->intel, s->light);
+    ui_text_fit(8, 72, 0.4f, COL_TEXT, 0, PG_W - 16, b);
     /* the spells working on you */
-    y = 108;
-    ui_text(8, y, 0.42f, COL_GOLD, 0, 0, "Spells on you:");
+    y = 88;
+    ui_text_fit(8, y, 0.4f, COL_GOLD, 0, 84, "Spells on you:");
     if (!s->nspells && !s->hasted && !s->timestop && !s->wizeye && !s->blessed)
-        ui_text(100, y, 0.42f, COL_DIM, 0, 0, "none");
-    for (i = 0; i < s->nspells; i++)
-        ui_textf(100, y + i * 14, 0.42f, COL_TEXT, "%s  (%s)", spell_name(s->spell_id[i]),
+        ui_text(96, y, 0.4f, COL_DIM, 0, 0, "none");
+    for (i = 0; i < s->nspells; i++) {
+        snprintf(b, sizeof b, "%s  (%s)", spell_name(s->spell_id[i]),
                  s->spell_steps[i] <= 2 ? "nearly done" : s->spell_steps[i] <= 10 ? "unstable" : "stable");
-    /* the skills, two columns */
-    y = 156;
+        ui_text_fit(96, y + i * 13, 0.4f, COL_TEXT, 0, PG_W - 104, b);
+    }
+    /* the skills, three columns of seven */
+    y = 132;
     for (i = 0; i < 20; i++) {
-        float x = 8 + (i / 7) * 130, yy = y + (i % 7) * 11.5f;
-        ui_textf(x, yy, 0.36f, s->skills[i] ? COL_TEXT : COL_DIM, "%s %d", uw_skill_name(i), s->skills[i]);
+        float x = 8 + (i / 7) * 104, yy = y + (i % 7) * 11;
+        snprintf(b, sizeof b, "%s %d", uw_skill_name(i), s->skills[i]);
+        ui_text_fit(x, yy, 0.36f, s->skills[i] ? COL_TEXT : COL_DIM, 0, 100, b);
     }
 }
 
 static void draw_log(void)
 {
-    int n, i, lines = 13;
-    float y = TOP_H - 18;
+    int n, i, lines = 14;
+    float y = PG_H - 4;
     uw_log_lock();
     n = uw_log_count();
     if (log_back > n - 1) log_back = n > 0 ? n - 1 : 0;
-    for (i = n - 1 - log_back; i >= 0 && y > 20; i--) {
+    for (i = n - 1 - log_back; i >= 0 && y > 4; i--) {
         float h;
         char l[200];
         snprintf(l, sizeof l, "%s", uw_log_line(i));
-        h = 15.0f * (1 + (int)(ui_text_width(0.44f, l) / (TOP_W - 16)));
+        h = 14.0f * (1 + (int)(ui_text_width(0.42f, l) / (PG_W - 16)));
         y -= h;
-        if (y < 20) break;
-        ui_text(8, y, 0.44f, COL_TEXT, C2D_WordWrap, TOP_W - 16, l);
+        if (y < 2) break;
+        ui_text(8, y, 0.42f, COL_TEXT, C2D_WordWrap, PG_W - 16, l);
         if (--lines < 0) break;
     }
     uw_log_unlock();
-    if (!n) ui_text(16, 40, 0.5f, COL_DIM, 0, 0, "Messages from the game's scroll gather here.");
-    if (log_back) ui_textf(TOP_W - 90, TOP_H - 16, 0.38f, COL_GOLD, "%d back", log_back);
+    if (!n) empty_page("Messages from the game's scroll gather here.");
+    if (log_back) {
+        char b[24];
+        snprintf(b, sizeof b, "%d back", log_back);
+        ui_rect(PG_W - 64, 0, 64, 15, COL_SHADE);
+        ui_text_fit(PG_W - 60, 1, 0.38f, COL_GOLD, 0, 56, b);
+    }
 }
 
 static void draw_journal(void)
 {
     int p = journal_person >= 0 ? journal_person : uw_journal_latest(), n, i;
-    float y = TOP_H - 6;
+    float y = PG_H - 2;
+    char b[48];
     uw_log_lock();
     if (p < 0 && uw_journal_people()) p = uw_journal_people() - 1;
     if (p < 0) {
         uw_log_unlock();
-        ui_text(16, 40, 0.5f, COL_DIM, C2D_WordWrap, TOP_W - 32, "Everything said in your conversations is kept here, by the person you spoke to.");
+        empty_page("Everything said in your conversations is kept here, by the person you spoke to.");
         return;
     }
     n = uw_journal_count(p);
@@ -394,14 +425,15 @@ static void draw_journal(void)
     for (i = n - 1 - journal_back; i >= 0; i--) {
         int who;
         const char *l = uw_journal_line(p, i, &who);
-        float h = 14.0f * (1 + (int)(ui_text_width(0.42f, l) / (TOP_W - 24)));
+        float h = 13.0f * (1 + (int)(ui_text_width(0.4f, l) / (PG_W - 24)));
         y -= h + 2;
-        if (y < 36) break;
-        ui_text(who == 1 ? 18 : 8, y, 0.42f, who == 1 ? COL_GOLD : who == 2 ? COL_DIM : COL_TEXT, C2D_WordWrap, TOP_W - 24, l);
+        if (y < 18) break;
+        ui_text(who == 1 ? 18 : 8, y, 0.4f, who == 1 ? COL_GOLD : who == 2 ? COL_DIM : COL_TEXT, C2D_WordWrap, PG_W - 26, l);
     }
-    ui_rect(0, 18, TOP_W, 16, COL_PANEL2);
-    ui_textf(8, 19, 0.44f, COL_GOLD, "%s", uw_journal_name(p));
-    ui_textf(TOP_W - 8 - 120, 20, 0.36f, COL_DIM, "%d of %d   SELECT+L/R", p + 1, uw_journal_people());
+    ui_rect(0, 0, PG_W, 16, COL_PANEL2);
+    ui_text_fit(8, 1, 0.42f, COL_GOLD, 0, PG_W - 120, uw_journal_name(p));
+    snprintf(b, sizeof b, "%d of %d  SELECT+L/R", p + 1, uw_journal_people());
+    ui_text_fit(PG_W - 6, 2, 0.34f, COL_DIM, C2D_AlignRight, 108, b);
     uw_log_unlock();
 }
 
@@ -412,62 +444,82 @@ static void draw_spells(void)
     const struct uwsnap *s = uw_snap();
     int n, i, row = 0, k;
     const struct uwspell *sp = uw_spells(&n);
-    if (!n) { ui_text(16, 40, 0.5f, COL_DIM, 0, 0, "Your spell book fills once you are in the Abyss."); return; }
+    if (!n) { empty_page("Your spell book fills once you are in the Abyss."); return; }
     for (i = 0; i < n; i++) {
-        char runes[48] = "";
+        char runes[48] = "", num[8];
         const char *hk = "";
         float y;
         if (!spell_known(&sp[i], s->runes)) continue;
         if (row++ < spells_scroll) continue;
-        y = 22 + (row - 1 - spells_scroll) * 14;
-        if (y > TOP_H - 14) break;
+        y = 4 + (row - 1 - spells_scroll) * 14;
+        if (y > PG_H - 14) break;
         for (k = 0; k < 3; k++)
             if (sp[i].rune[k] < 24) { strcat(runes, uw_rune_name(sp[i].rune[k])); strcat(runes, " "); }
         for (k = 0; k < 4; k++) if (hotkey[k] == i) hk = dirs[k];
-        ui_textf(8, y, 0.42f, COL_DIM, "%d", i / 6 + 1);
-        ui_text(24, y, 0.42f, COL_TEXT, 0, 0, sp[i].name);
-        ui_text(196, y, 0.42f, COL_GOLD, 0, 0, runes);
-        if (*hk) ui_textf(TOP_W - 50, y, 0.42f, COL_GREEN, "%s", hk);
+        snprintf(num, sizeof num, "%d", i / 6 + 1);
+        ui_text(6, y, 0.4f, COL_DIM, 0, 0, num);
+        ui_text_fit(20, y, 0.4f, COL_TEXT, 0, 130, sp[i].name);
+        ui_text_fit(154, y, 0.4f, COL_GOLD, 0, *hk ? 116 : 160, runes);
+        if (*hk) ui_text_fit(PG_W - 4, y, 0.4f, COL_GREEN, C2D_AlignRight, 40, hk);
     }
-    if (!row) ui_text(16, 40, 0.5f, COL_DIM, C2D_WordWrap, TOP_W - 32, "No spells yet: find runestones to learn them.");
+    if (!row) empty_page("No spells yet: find runestones to learn them.");
 }
 
-static void draw_view(int eye, float iod)
+static void draw_tabs(void)
 {
-    const struct uwsnap *s = uw_snap();
-    /* the game's view, enlarged, floating behind the screen's frame by the 3D slider */
-    float shift = (eye ? 1 : -1) * iod * 8.0f, w = VIEW_W * 1.85f, h = VIEW_H * 1.85f;
-    float x = (TOP_W - w) / 2, y = 20 + (TOP_H - 20 - h) / 2;
-    ui_rect(0, 18, TOP_W, TOP_H - 18, COL_BG);
-    if (s->mode != SNAP_VIEW) {
-        ui_text(TOP_W / 2, 110, 0.5f, COL_DIM, C2D_AlignCenter, 0, "The 3D view shows while you explore.");
-        return;
-    }
+    int i;
+    float w = (float)BOT_W / TABS;
+    ui_rect(0, PG_H, BOT_W, STRIP_H, COL_PANEL);
+    for (i = 0; i < TABS; i++)
+        if (ui_button(i * w + 1, PG_H + 2, w - 2, STRIP_H - 3, tab_names[i], i == tab) && tab != i) {
+            tab = i;
+            opts_save();
+        }
+}
+
+/* ---- the top screen ---- */
+
+/* The game's 3D view (or the conversation in its place), about twice its size, floating behind
+   the screen's frame by the 3D slider. */
+static void draw_big_view(int eye, float iod)
+{
+    float sc = 392.0f / VIEW_W, w, h, x, y, shift = (eye ? 1 : -1) * iod * 7.0f;
+    if (232.0f / VIEW_H < sc) sc = 232.0f / VIEW_H;
+    w = VIEW_W * sc; h = VIEW_H * sc;
+    x = (TOP_W - w) / 2; y = (TOP_H - h) / 2;
     p3_draw_picture(VIEW_X, VIEW_Y, VIEW_W, VIEW_H, x - shift, y, w, h);
-    /* a frame at the screen's depth */
-    ui_frame(x - 4, y - 4, w + 8, 4, COL_EDGE, COL_EDGE);
-    ui_rect(x - 4, y + h, w + 8, 4, COL_EDGE);
-    ui_rect(x - 4, y - 4, 4, h + 8, COL_EDGE);
-    ui_rect(x + w, y - 4, 4, h + 8, COL_EDGE);
-    if (iod <= 0) ui_text(TOP_W / 2, TOP_H - 14, 0.36f, COL_DIM, C2D_AlignCenter, 0, "Turn up the 3D slider");
+    /* a frame at the screen's depth, covering the picture's shifted edges */
+    ui_rect(0, 0, x + 2, TOP_H, COL_BG);
+    ui_rect(x + w - 2, 0, TOP_W - x - w + 2, TOP_H, COL_BG);
+    ui_rect(x - 2, y - 4, w + 4, 4, COL_EDGE);
+    ui_rect(x - 2, y + h, w + 4, 4, COL_EDGE);
+    ui_rect(x - 2, y - 4, 4, h + 8, COL_EDGE);
+    ui_rect(x + w - 2, y - 4, 4, h + 8, COL_EDGE);
+}
+
+static void draw_title(void)
+{
+    ui_text_fit(TOP_W / 2, 70, 0.95f, COL_GOLD, C2D_AlignCenter, TOP_W - 30, UW3DS_TITLE);
+    ui_text_fit(TOP_W / 2, 110, 0.5f, COL_TEXT, C2D_AlignCenter, TOP_W - 30, "New 3DS edition");
+    ui_text(TOP_W / 2, 150, 0.42f, COL_DIM, C2D_AlignCenter | C2D_WordWrap, TOP_W - 60,
+            "Play the menus on the touch screen with the stylus. Once you are in the Abyss, the 3D view moves up here.");
+    ui_text_fit(TOP_W / 2, TOP_H - 20, 0.38f, COL_DIM, C2D_AlignCenter, TOP_W - 20, "START: port menu and manual");
 }
 
 void front_draw_top(int eye, float iod)
 {
+    const struct uwsnap *s = uw_snap();
     ui_begin();
     ui_rect(0, 0, TOP_W, TOP_H, COL_BG);
     if (overlay == OV_MANUAL) { manual_draw_top(); return; }
-    if (tab == TAB_MAP) map_draw(0, 18, TOP_W, TOP_H - 18);
-    else if (tab == TAB_STATUS) draw_status();
-    else if (tab == TAB_LOG) draw_log();
-    else if (tab == TAB_JOURNAL) draw_journal();
-    else if (tab == TAB_SPELLS) draw_spells();
-    else draw_view(eye, iod);
-    header(tab_names[tab]);
+    if (s->mode == SNAP_VIEW || s->mode == SNAP_CONV) draw_big_view(eye, iod);
+    else if (s->in_game) map_draw(0, 0, TOP_W, TOP_H);     /* the game's own map is on the bottom */
+    else draw_title();
     if (toast_until && (int)(toast_until - p3_frame()) > 0) {
         float w = ui_text_width(0.46f, toast) + 20;
+        if (w > TOP_W - 8) w = TOP_W - 8;
         ui_frame((TOP_W - w) / 2, TOP_H - 26, w, 20, COL_PANEL2, COL_GOLD);
-        ui_text(TOP_W / 2, TOP_H - 24, 0.46f, COL_TEXT, C2D_AlignCenter, 0, toast);
+        ui_text_fit(TOP_W / 2, TOP_H - 24, 0.46f, COL_TEXT, C2D_AlignCenter, w - 10, toast);
     }
     if (overlay && overlay != OV_MANUAL) {
         ui_rect(0, TOP_H - 14, TOP_W, 14, COL_SHADE);
@@ -477,11 +529,11 @@ void front_draw_top(int eye, float iod)
 
 /* ---- the port menu, on the bottom screen ---- */
 
-static int menu_input(u32 down, u32 held, circlePosition cp, int touching, touchPosition t)
+static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, int touching, touchPosition t)
 {
     (void)touching; (void)t;
     if (overlay == OV_MANUAL) {
-        manual_input(down, held, cp);
+        manual_input(down, held, cp, cs);
         if (down & (KEY_B | KEY_START)) overlay = OV_MENU;
         return 1;
     }
@@ -519,8 +571,8 @@ static void menu_main(void)
     if (ui_button(165, 114, 145, 34, "Map", 0)) overlay = OV_MAP;
     if (ui_button(10, 154, 145, 34, "Settings", 0)) { overlay = OV_NONE; p3_pause(0); p3_settings(1); }
     if (ui_button(165, 154, 145, 34, "Quit", 0)) overlay = OV_QUIT;
-    ui_text(BOT_W / 2, 204, 0.4f, COL_DIM, C2D_AlignCenter, 0, "Quicksave and Quickload use the game's slot 4.");
-    ui_text(BOT_W / 2, 220, 0.4f, COL_DIM, C2D_AlignCenter, 0, "SELECT changes the top screen's page.");
+    ui_text_fit(BOT_W / 2, 204, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "Quicksave and Quickload use the game's slot 4.");
+    ui_text_fit(BOT_W / 2, 220, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "SELECT or the tabs change the bottom page.");
 }
 
 static void menu_hotkeys(void)
@@ -576,7 +628,7 @@ static void menu_manual(void)
     ui_text(BOT_W / 2, 4, 0.5f, COL_GOLD, C2D_AlignCenter, 0, "Manual");
     for (i = 0; i < n && i < 16; i++) {
         float x = 6 + (i % 2) * 156, y = 24 + (i / 2) * 24;
-        if (ui_button(x, y, 152, 22, manual_title(i), 0)) manual_open(i);
+        if (ui_button(x, y, 152, 22, manual_title(i), i == manual_current())) manual_open(i);
     }
     if (ui_button(230, 214, 84, 24, "Close", 0)) overlay = OV_MENU;
 }
@@ -591,7 +643,21 @@ static void menu_quit(void)
 
 int front_draw_bottom(void)
 {
-    if (!overlay) return 0;
+    if (!overlay) {
+        if (!uw_snap()->in_game) return 0;
+        if (tab != TAB_GAME) {
+            ui_rect(0, 0, PG_W, PG_H, COL_BG);
+            switch (tab) {
+            case TAB_MAP: map_draw(0, 0, PG_W, PG_H); break;
+            case TAB_STATUS: draw_status(); break;
+            case TAB_LOG: draw_log(); break;
+            case TAB_JOURNAL: draw_journal(); break;
+            case TAB_SPELLS: draw_spells(); break;
+            }
+        }
+        draw_tabs();
+        return tab != TAB_GAME;
+    }
     ui_rect(0, 0, BOT_W, BOT_H, C2D_Color32(18, 16, 14, 235));
     switch (overlay) {
     case OV_MENU: menu_main(); break;

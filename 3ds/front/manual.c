@@ -57,13 +57,25 @@ void manual_open(int chapter)
     scroll = 0;
 }
 
-void manual_input(u32 down, u32 held, circlePosition cp)
+int manual_current(void) { return cur; }
+
+/* The manual's controls, the same in every one of these 3DS ports: the Circle Pad and the
+   C-stick scroll the text (held, it keeps scrolling); the D-pad moves between the section buttons
+   on the bottom screen (two columns: left and right step, up and down a row); L and R the
+   previous or next section; a tap on a section opens it; B or START close. */
+void manual_input(u32 down, u32 held, circlePosition cp, circlePosition cs)
 {
-    if (down & (KEY_DRIGHT | KEY_R)) { if (cur < nch - 1) { cur++; scroll = 0; } }
-    if (down & (KEY_DLEFT | KEY_L)) { if (cur > 0) { cur--; scroll = 0; } }
-    if ((held & KEY_DDOWN) || cp.dy < -40) scroll += 3;
-    if ((held & KEY_DUP) || cp.dy > 40) scroll -= 3;
-    if (cp.dx > 100 && (down & 0) == 0) { }
+    int to = cur;
+    (void)held;
+    if (down & KEY_R) to = cur + 1;
+    if (down & KEY_L) to = cur - 1;
+    if (down & KEY_DRIGHT) to = cur + 1;
+    if (down & KEY_DLEFT) to = cur - 1;
+    if (down & KEY_DDOWN) to = cur + 2;
+    if (down & KEY_DUP) to = cur - 2;
+    if (to != cur && to >= 0 && to < nch) { cur = to; scroll = 0; }
+    if (cp.dy < -40 || cs.dy < -40) scroll += (cp.dy < -110 || cs.dy < -110) ? 6 : 3;
+    if (cp.dy > 40 || cs.dy > 40) scroll -= (cp.dy > 110 || cs.dy > 110) ? 6 : 3;
     if (scroll < 0) scroll = 0;
 }
 
@@ -95,7 +107,7 @@ void manual_draw_top(void)
     }
     if (y + scroll < 34 + scroll) { }
     ui_rect(0, TOP_H - 16, TOP_W, 16, COL_PANEL);
-    ui_text(TOP_W / 2, TOP_H - 15, 0.4f, COL_DIM, C2D_AlignCenter, 0, "L R: chapter    Circle Pad: scroll    B: close");
+    ui_text_fit(TOP_W / 2, TOP_H - 15, 0.4f, COL_DIM, C2D_AlignCenter, TOP_W - 10, "Sticks: scroll    D-pad: section    L R: previous / next    B: close");
 }
 
 const char *manual_title(int chapter)

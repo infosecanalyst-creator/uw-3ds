@@ -1,11 +1,13 @@
 # Welcome
 This is the Stygian Abyss on your New 3DS: the original game, decompiled byte for byte by the Underworld Exhumed project, running natively with a 3DS front end.
 
-The bottom screen is the game. Play it with the stylus exactly as you would with a mouse: tap to use, tap and drag to move items, and hold ZL while tapping for the right mouse button.
+The top screen is the game's 3D view, about twice its size, in stereoscopic 3D when you turn up the 3D slider. When you talk to someone, the conversation shows there too.
 
-The top screen is your dashboard. SELECT changes its page; START opens the port menu.
+The bottom screen is the whole game screen. Play it with the stylus exactly as you would with a mouse: your inventory, the icons, the runes and the scroll, and the small view, where you tap things in the world to use or pick them up. Tap and drag to move items, and hold ZL while tapping for the right mouse button.
 
-Use the circle pad to change pages of this manual, and B or START to close it.
+Under the game is a row of tabs: Game, Map, Status, Log, Journal and Spells. The other tabs show a dashboard page on the bottom screen in place of the game; tap Game (or press SELECT) to go back. START opens the port menu.
+
+In this manual: the Circle Pad or C-stick scrolls, the D-pad moves between the sections on the bottom screen, L and R go to the previous or next section, and B or START closes it.
 
 # Buttons
 Circle Pad: walk forward (push all the way to run), back, turn left and right.
@@ -18,7 +20,7 @@ ZR: jump.
 ZL (held): the stylus becomes the right mouse button.
 B: escape (close a scroll, leave a menu).
 D-pad: cast the spell on that hotkey (see Magic).
-SELECT: the next dashboard page. Hold SELECT and press L or R to go back or forward.
+SELECT: the next tab on the bottom screen. Hold SELECT and use the Circle Pad to scroll a page, or L and R to step through it (levels on the Map, people in the Journal).
 START: the port menu.
 
 # The cursor
@@ -26,34 +28,31 @@ Many actions work on whatever is under the game's cursor. The cursor stays where
 
 When you walk with the circle pad after touching the screen, the cursor goes back to the centre of the view, so R and X act on what is straight ahead of you.
 
-# Dashboard: Map
+# Page: Map
 A live map of the level you are on, drawn from the game's own record of the squares you have seen. The arrow is you; it turns as you turn.
 
 Stairs, doors and other things you have seen are marked. Notes you write on the game's map (Y) appear here as small gold pins.
 
 In the port menu you can zoom the map and look at other levels.
 
-# Dashboard: Status
+# Page: Status
 Your vitality, mana, level and experience, how hungry and tired you are, any poison, your light, and the spells working on you.
 
-# Dashboard: Log
-Every message the scroll at the bottom of the game screen has shown, so nothing is lost when it scrolls away. Use the circle pad while the port menu is open to read back.
+# Page: Log
+Every message the scroll at the bottom of the game screen has shown, so nothing is lost when it scrolls away. Hold SELECT and use the Circle Pad to read back.
 
-# Dashboard: Journal
+# Page: Journal
 Every conversation you have had, by the person you spoke to: what they said and what you answered. Reread clues instead of writing them on paper. The journal is kept with your saved games.
 
-# Dashboard: Spells
+# Page: Spells
 Your spell book: every spell whose runes you have learned, with its runes, and which D-pad direction it is on.
-
-# Dashboard: 3D view
-An optional page that shows the game's view raised above the screen in stereoscopic 3D. Turn up the 3D slider to see it.
 
 # Magic
 To cast a spell normally, tap runes in your rune bag to put them on the shelf, then tap the shelf.
 
 Spell hotkeys: open the port menu, choose Spell hotkeys, tap a spell from your book and then tap the D-pad direction to put it on. In play, press that direction to cast it at once. A spell whose runes you do not all have is refused with a sound.
 
-The Spells page of the dashboard lists every hotkey.
+The Spells page lists every hotkey.
 
 # Saving
 Quicksave and Quickload are in the port menu. They use the game's own save slot 4, so they also show in the game's own Save and Restore screens.

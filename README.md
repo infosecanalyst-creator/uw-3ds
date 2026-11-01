@@ -5,8 +5,8 @@ A dual-screen 3DS port of *Ultima Underworld: The Stygian Abyss* and *Ultima Und
 **You need your own copy of the games (the GOG releases).** This repository holds no game data.
 
 ## What it is
-- **Bottom screen:** the game, 4:3, played with the stylus as the mouse (hold ZL for the right button).
-- **Top screen:** a dashboard with pages: live Map (from the game's own automap, with your map notes), Status, message Log, conversation Journal, Spells (your spell book and hotkeys) and a stereoscopic 3D view.
+- **Top screen:** the game's 3D view (and conversations) at about twice the size, with stereoscopic depth from the 3D slider.
+- **Bottom screen:** the whole game screen, played with the stylus as the mouse (hold ZL for the right button), above tabs for dashboard pages: live Map (from the game's own automap, with your map notes), Status, message Log, conversation Journal and Spells (your spell book and hotkeys).
 - **Controls:** Circle Pad walks and turns, C-Stick slides and looks, L attacks, R/A use, X looks, Y the map, ZR jumps, B escapes, D-pad casts spell hotkeys, SELECT changes the page, START opens the port menu (quicksave/quickload, hotkeys, map, manual, settings).
 - The system keyboard for typed text (character name, mantras, conversation answers).
 - A built-in manual.

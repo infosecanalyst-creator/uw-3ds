@@ -77,6 +77,9 @@ void front_init(void);
 /* The buttons this frame, the sticks and the touch. Returns 1 when the front end took the
    touch itself (an overlay), so the backend does not give it to the game. */
 int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs, int touching, touchPosition t);
+/* How many of the bottom screen's lines (from its top) show the game, which the stylus plays:
+   240 for the whole screen, less above the front end's tabs, 0 while a page covers it. */
+float front_game_height(void);
 /* Which mouse button a new touch presses: PLAT_BUTTON_LEFT, or _RIGHT while a modifier is held. */
 unsigned front_touch_button(void);
 /* Draws the top screen (the dashboard). EYE is 0 for the left image (or mono), 1 for the right. */

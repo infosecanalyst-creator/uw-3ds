@@ -94,6 +94,13 @@ int ui_button(float x, float y, float w, float h, const char *label, int lit)
     int in0 = t_x0 >= x && t_x0 < x + w && t_y0 >= y && t_y0 < y + h;
     int pressed = t_now && in && in0;
     ui_frame(x, y, w, h, pressed ? COL_EDGE : lit ? COL_PANEL2 : COL_PANEL, lit ? COL_GOLD : COL_EDGE);
-    ui_text(x + w / 2, y + (h - 16) / 2, 0.5f, lit ? COL_GOLD : COL_TEXT, C2D_AlignCenter, 0, label);
+    ui_text_fit(x + w / 2, y + (h - 16) / 2, 0.5f, lit ? COL_GOLD : COL_TEXT, C2D_AlignCenter, w - 6, label);
     return !t_now && t_was && in && in0;
+}
+
+float ui_text_fit(float x, float y, float size, u32 col, int flags, float maxw, const char *s)
+{
+    float sz = size;
+    while (sz > 0.28f && ui_text_width(sz, s) > maxw) sz *= 0.94f;
+    return ui_text(x, y + (size - sz) * 15.0f, sz, col, flags & ~C2D_WordWrap, 0, s);
 }

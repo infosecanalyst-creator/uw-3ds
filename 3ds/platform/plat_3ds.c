@@ -4,9 +4,10 @@
    runs on the main thread, reads the emulated VGA's picture each screen refresh and presents
    it, and turns the buttons and the touch screen into the PC's keyboard and mouse.
 
-   The game fills the bottom screen, which is played with the stylus as the mouse: its 320x200
-   picture is shown 320x240, the 4:3 shape a CRT gave it, so the touch screen is exactly the
-   game's screen. The top screen is the front end's (3ds/front): the dashboard. */
+   The bottom screen shows the whole game, played with the stylus as the mouse: its 320x200
+   picture stretched to the lines the front end gives it (240, the 4:3 shape a CRT gave it, in
+   the menus; 214 above the front end's tabs in play), so a touch lands where it is drawn. The
+   top screen is the front end's (3ds/front): the game's 3D view enlarged, or the title. */
 #include <3ds.h>
 #include <citro2d.h>
 #include <citro3d.h>
@@ -391,7 +392,7 @@ void plat_pointer_event(const PlatPointer *ev)
 
 void plat_window_click(float x, float y, int release)
 {
-    mx = x * 320.0f / 320.0f; my = y * 200.0f / 240.0f;
+    mx = x * 320.0f / 320.0f; my = y * 200.0f / (front_game_height() > 0 ? front_game_height() : 240.0f);
     p3_mouse_button(PLAT_BUTTON_LEFT, 1);
     if (release) p3_mouse_button(PLAT_BUTTON_LEFT, 0);
 }
@@ -551,8 +552,9 @@ static void game_input(u32 down, u32 held_k, u32 up, circlePosition cp, circlePo
         return;
     }
     if (touching) {
-        /* the bottom screen is the game's 320x200 stretched to 240 lines */
-        float x = (float)t.px * pw / 320.0f, y = (float)t.py * ph / 240.0f;
+        /* the game's 320x200 is stretched to the front end's game lines */
+        float gh = front_game_height();
+        float x = (float)t.px * pw / 320.0f, y = (float)t.py * ph / (gh > 0 ? gh : 240.0f);
         p3_mouse_move(x, y);
         if (!was_touching && !release_due) {
             touch_b = front_touch_button();
@@ -594,7 +596,8 @@ static void draw(void)
     if (sopen) {
         C2D_DrawImageAt(limg, 0, 20, 0.5f, NULL, 0.5f, 0.5f);
     } else {
-        C2D_DrawImageAt(gimg, 0, 0, 0.5f, NULL, 320.0f / pw, 240.0f / ph);
+        float gh = front_game_height();
+        if (gh > 0) C2D_DrawImageAt(gimg, 0, 0, 0.5f, NULL, 320.0f / pw, gh / ph);
         front_draw_bottom();
     }
     C3D_FrameEnd(0);

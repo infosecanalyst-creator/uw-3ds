@@ -8,7 +8,8 @@ void manual_load(void);
 int manual_chapters(void);
 const char *manual_title(int chapter);
 void manual_open(int chapter);
-void manual_input(u32 down, u32 held, circlePosition cp);
+void manual_input(u32 down, u32 held, circlePosition cp, circlePosition cs);
+int manual_current(void);
 void manual_draw_top(void);
 
 /* glue.c, the main thread's side */
