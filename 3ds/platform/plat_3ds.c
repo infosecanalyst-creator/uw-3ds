@@ -698,10 +698,31 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         }
     }
     if (!game_done && hooks->lifecycle) hooks->lifecycle(PLAT_QUIT_REQUEST);
+    {
+        /* give the game a moment to finish on its own (a quit it asked for itself is already done) */
+        int i;
+        for (i = 0; i < 25 && !game_done; i++) svcSleepThread(20000000LL);
+    }
     audio_on = 0;
     LightEvent_Signal(&aev);
     fprintf(stderr, PLAT_NAME ": %u frames\n", frames);
-    fflush(stderr);
-    /* the game's thread may be anywhere: the files it writes are closed by the runtime's exit */
+    {
+        /* The game's thread (and the timer's and the synthesizer's) may still be running on the
+           other cores. Returning would run the C library's exit, which frees the heap, those
+           threads' stacks included, under them: a data abort on the game's core as HOME closes the
+           app. So write out what the port keeps (the journal, open files), stop the sound and the
+           screens, and end the process at once: the kernel stops every thread before it frees
+           anything. The game writes its own saves when it saves, so nothing of the game's is lost. */
+        extern void uw_journal_flush(void);
+        uw_journal_flush();
+        fflush(NULL);
+        svcSleepThread(30000000LL);        /* the sound thread sees audio_on and stops */
+        ndspExit();
+        C2D_Fini();
+        C3D_Fini();
+        gfxExit();
+        romfsExit();
+        svcExitProcess();
+    }
     return game_status;
 }
