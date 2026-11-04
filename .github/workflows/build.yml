@@ -3,7 +3,7 @@ name: build-3dsx
 # (3dsx + build log), so they can be fetched and installed over Wi-Fi without a PC build.
 on:
   push:
-    branches: [main, dev]
+    branches: ["**", "!builds"]
   workflow_dispatch:
 permissions:
   contents: write
