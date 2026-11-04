@@ -1,0 +1,41 @@
+name: build-3dsx
+# Builds uw1 and uw2 with devkitARM and publishes the results to the `builds` branch
+# (3dsx + build log), so they can be fetched and installed over Wi-Fi without a PC build.
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm
+    steps:
+      - name: Tools
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq git python3 ca-certificates >/dev/null
+          git config --global --add safe.directory '*'
+      - uses: actions/checkout@v4
+      - name: Fetch upstream and apply patches
+        run: sh tools/setup.sh
+      - name: Build UW1
+        run: python3 tools/build3ds.py uw1 2>&1 | tee build-uw1.log; test -f build/uw1/uw1-3ds.3dsx
+      - name: Build UW2
+        run: python3 tools/build3ds.py uw2 2>&1 | tee build-uw2.log; test -f build/uw2/uw2-3ds.3dsx
+      - name: Collect
+        if: always()
+        run: |
+          mkdir -p out
+          cp build/uw1/uw1-3ds.3dsx build/uw2/uw2-3ds.3dsx out/ 2>/dev/null || true
+          cp build-uw*.log out/ 2>/dev/null || true
+          echo "$GITHUB_SHA" > out/SOURCE_COMMIT
+      - name: Publish to builds branch
+        if: always()
+        run: |
+          cd out
+          git init -q -b builds
+          git config user.name "build-bot"; git config user.email "build-bot@users.noreply.github.com"
+          git add -A; git commit -qm "build of ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" builds
