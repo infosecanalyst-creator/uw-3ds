@@ -528,8 +528,8 @@ static void settings_input(u32 down, int touching, touchPosition t)
     if (down & KEY_LEFT) settings_key(SET_KEY_LEFT);
     if (down & KEY_RIGHT) settings_key(SET_KEY_RIGHT);
     if (down & (KEY_L | KEY_R)) settings_key(SET_KEY_TAB);
-    if (down & KEY_A) settings_key(SET_KEY_ENTER);
-    if (down & KEY_B) settings_key(SET_KEY_ESC);
+    if (down & front_confirm_key()) settings_key(SET_KEY_ENTER);
+    if (down & front_back_key()) settings_key(SET_KEY_ESC);
     if (down & (KEY_START | KEY_SELECT)) settings_key(SET_KEY_F11);
     if (touching || was_touching) {
         /* the bottom screen shows the 640x400 layer at half size, 20 pixels down */

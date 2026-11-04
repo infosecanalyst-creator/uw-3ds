@@ -3,7 +3,7 @@ This is the Stygian Abyss on your New 3DS: the original game, decompiled byte fo
 
 The top screen is the game's 3D view, about twice its size, in stereoscopic 3D when you turn up the 3D slider. When you talk to someone, the conversation shows there too.
 
-The bottom screen is the whole game screen. Play it with the stylus exactly as you would with a mouse: your inventory, the icons, the runes and the scroll, and the small view, where you tap things in the world to use or pick them up. Tap and drag to move items, and hold ZL while tapping for the right mouse button.
+The bottom screen is the whole game screen. Play it with the stylus exactly as you would with a mouse: your inventory, the icons, the runes and the scroll, and the small view, where you tap things in the world to use or pick them up. Tap and drag to move items, and hold R while tapping for the right mouse button.
 
 Under the game is a row of tabs: Game, Map, Status, Log, Journal and Spells. The other tabs show a dashboard page on the bottom screen in place of the game; tap Game (or press SELECT) to go back. START opens the port menu.
 
@@ -13,11 +13,11 @@ In this manual: the Circle Pad or C-stick scrolls, the D-pad moves between the s
 Circle Pad: walk forward (push all the way to run), back, turn left and right.
 C-stick: slide left and right, look up and down.
 L: attack. Hold it to draw back a stronger blow, release to swing.
-R or A: use whatever is under the cursor. On a person, talk to them.
+A: use whatever is under the cursor. On a person, talk to them.
 X: look at whatever is under the cursor.
 Y: the game's own map (where you can write notes).
 ZR: jump.
-ZL (held): the stylus becomes the right mouse button.
+R (held): the stylus becomes the right mouse button.
 B: escape (close a scroll, leave a menu).
 D-pad: cast the spell on that hotkey (see Magic).
 SELECT: the next tab on the bottom screen. Hold SELECT and use the Circle Pad to scroll a page, or L and R to step through it (levels on the Map, people in the Journal).
@@ -26,7 +26,7 @@ START: the port menu.
 # The cursor
 Many actions work on whatever is under the game's cursor. The cursor stays wherever you last touched the screen.
 
-When you walk with the circle pad after touching the screen, the cursor goes back to the centre of the view, so R and X act on what is straight ahead of you.
+When you walk with the circle pad after touching the screen, the cursor goes back to the centre of the view, so A and X act on what is straight ahead of you.
 
 # Page: Map
 A live map of the level you are on, drawn from the game's own record of the squares you have seen. The arrow is you; it turns as you turn.

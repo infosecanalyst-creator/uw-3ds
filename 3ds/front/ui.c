@@ -88,6 +88,16 @@ void ui_touch(int touching, int x, int y)
     }
 }
 
+int ui_button_en(float x, float y, float w, float h, const char *label, int lit, int enabled)
+{
+    if (!enabled) {
+        ui_frame(x, y, w, h, COL_BG, COL_PANEL2);
+        ui_text_fit(x + w / 2, y + (h - 16) / 2, 0.5f, C2D_Color32(96, 90, 80, 255), C2D_AlignCenter, w - 6, label);
+        return 0;
+    }
+    return ui_button(x, y, w, h, label, lit);
+}
+
 int ui_button(float x, float y, float w, float h, const char *label, int lit)
 {
     int in = t_x >= x && t_x < x + w && t_y >= y && t_y < y + h;

@@ -82,6 +82,9 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
 float front_game_height(void);
 /* Which mouse button a new touch presses: PLAT_BUTTON_LEFT, or _RIGHT while a modifier is held. */
 unsigned front_touch_button(void);
+/* The face buttons for confirm and back: A and B, or swapped by the Settings option. */
+unsigned front_confirm_key(void);
+unsigned front_back_key(void);
 /* Draws the top screen (the dashboard). EYE is 0 for the left image (or mono), 1 for the right. */
 void front_draw_top(int eye, float iod);
 /* Draws over the game on the bottom screen (the port menu, hints); 1 if it covered the game. */

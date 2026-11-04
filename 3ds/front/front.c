@@ -11,8 +11,8 @@
    bottom screen and the top screen shows the title.
 
    Buttons: Circle Pad walk/run/back and turn; C-stick slide and look up and down; L attack
-   (held to charge); R or A use, X look (at the cursor); Y the game's map; ZR jump; ZL held
-   makes the stylus the right button; B escape; D-pad the spell hotkeys; SELECT the next page
+   (held to charge); A use (the confirm button), X look (at the cursor); Y the game's map; ZR jump;
+   R held makes the stylus the right button; B escape (the back button; Settings can swap A and B); D-pad the spell hotkeys; SELECT the next page
    (held with the Circle Pad: scroll it; with L or R: the page's previous or next item);
    START the port menu. */
 #include <math.h>
@@ -43,6 +43,11 @@ static char toast[96];
 static unsigned toast_until;
 static int moved_since_touch;
 static int select_used;
+static int swap_ab;                     /* Settings: swap the A and B buttons (A confirms by default) */
+#define CONFIRM_KEY (swap_ab ? KEY_B : KEY_A)
+#define BACK_KEY (swap_ab ? KEY_A : KEY_B)
+unsigned front_confirm_key(void) { return CONFIRM_KEY; }
+unsigned front_back_key(void) { return BACK_KEY; }
 
 /* the game's 3D view on its 320x200 screen (UWEDIT.C's place_3d_view: x, the bottom row counted
    from the screen's bottom, width, height) */
@@ -72,7 +77,7 @@ static void opts_save(void)
 {
     FILE *f = fopen(OPTS, "w");
     if (!f) return;
-    fprintf(f, "page=%d\nzoom=%d\nhotkeys=%d,%d,%d,%d\n", tab, map_zoom_level(), hotkey[0], hotkey[1], hotkey[2], hotkey[3]);
+    fprintf(f, "page=%d\nzoom=%d\nhotkeys=%d,%d,%d,%d\nswapab=%d\n", tab, map_zoom_level(), hotkey[0], hotkey[1], hotkey[2], hotkey[3], swap_ab);
     fclose(f);
 }
 
@@ -86,6 +91,7 @@ static void opts_load(void)
         if (sscanf(l, "page=%d", &tab) == 1 && (tab < 0 || tab >= TABS)) tab = 0;
         if (sscanf(l, "zoom=%d", &z) == 1) map_zoom(z - map_zoom_level());
         sscanf(l, "hotkeys=%d,%d,%d,%d", &hotkey[0], &hotkey[1], &hotkey[2], &hotkey[3]);
+        if (sscanf(l, "swapab=%d", &z) == 1) swap_ab = z != 0;
     }
     fclose(f);
 }
@@ -275,11 +281,11 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
     stick_keys(cp, cs, (held & KEY_SELECT) != 0);
     if (held & KEY_SELECT) return mine;
     p3_key(K_SPACE, (held & KEY_L) != 0);       /* attack, held to charge */
-    if (down & (KEY_R | KEY_A)) at_cursor(K_E);
+    if (down & CONFIRM_KEY) at_cursor(K_E);
     if (down & KEY_X) at_cursor(K_Q);
     if (down & KEY_Y) p3_tap(K_Z, 2);           /* the game's map */
     if (down & KEY_ZR) p3_tap(K_J, 2);          /* jump */
-    if (down & KEY_B) p3_tap(K_ESC, 2);
+    if (down & BACK_KEY) p3_tap(K_ESC, 2);
     if (down & KEY_DUP) cast_hotkey(0);
     if (down & KEY_DRIGHT) cast_hotkey(1);
     if (down & KEY_DDOWN) cast_hotkey(2);
@@ -289,7 +295,7 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
 
 unsigned front_touch_button(void)
 {
-    return (hidKeysHeld() & KEY_ZL) ? PLAT_BUTTON_RIGHT : PLAT_BUTTON_LEFT;
+    return (hidKeysHeld() & KEY_R) ? PLAT_BUTTON_RIGHT : PLAT_BUTTON_LEFT;
 }
 
 static void keyboard(void)
@@ -534,7 +540,7 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
     (void)touching; (void)t;
     if (overlay == OV_MANUAL) {
         manual_input(down, held, cp, cs);
-        if (down & (KEY_B | KEY_START)) overlay = OV_MENU;
+        if (down & (BACK_KEY | KEY_START)) overlay = OV_MENU;
         return 1;
     }
     if (overlay == OV_MAP) {
@@ -547,7 +553,7 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
         if ((held & KEY_DUP) || cp.dy > 40) { if (pick_scroll > 0 && (p3_frame() & 3) == 0) pick_scroll--; }
         if ((held & KEY_DDOWN) || cp.dy < -40) { if ((p3_frame() & 3) == 0) pick_scroll++; }
     }
-    if (down & KEY_B) overlay = overlay == OV_MENU ? OV_NONE : OV_MENU;
+    if (down & BACK_KEY) overlay = overlay == OV_MENU ? OV_NONE : OV_MENU;
     if (down & KEY_START) overlay = OV_NONE;
     if (overlay == OV_NONE) { p3_pause(0); opts_save(); }
     return 1;
@@ -559,20 +565,23 @@ static void menu_main(void)
     ui_text(BOT_W / 2, 6, 0.6f, COL_GOLD, C2D_AlignCenter, 0, UW3DS_TITLE);
     if (ui_button(10, 34, 145, 34, "Resume", 0)) { overlay = OV_NONE; p3_pause(0); }
     if (ui_button(165, 34, 145, 34, "Manual", 0)) { overlay = OV_MANUAL; manual_open(0); }
-    if (ui_button(10, 74, 145, 34, "Quicksave", 0)) {
+    if (ui_button_en(10, 74, 145, 34, "Quicksave", 0, s->in_game)) {
         overlay = OV_NONE; p3_pause(0);
-        if (!uw_request_save(4, "Quicksave")) say(s->in_game ? "You cannot save just now." : "Start or restore a game first.");
+        if (!uw_request_save(4, "Quicksave")) say("You cannot save just now.");
     }
-    if (ui_button(165, 74, 145, 34, "Quickload", 0)) {
+    if (ui_button_en(165, 74, 145, 34, "Quickload", 0, s->in_game)) {
         overlay = OV_NONE; p3_pause(0);
-        if (!uw_request_restore(4)) say(s->in_game ? "You cannot restore just now." : "Restore from the game's own menu.");
+        if (!uw_request_restore(4)) say("You cannot restore just now.");
     }
-    if (ui_button(10, 114, 145, 34, "Spell hotkeys", 0)) { overlay = OV_HOTKEYS; pick_spell = -1; }
-    if (ui_button(165, 114, 145, 34, "Map", 0)) overlay = OV_MAP;
+    if (ui_button_en(10, 114, 145, 34, "Spell hotkeys", 0, s->in_game)) { overlay = OV_HOTKEYS; pick_spell = -1; }
+    if (ui_button_en(165, 114, 145, 34, "Map", 0, s->in_game)) overlay = OV_MAP;
     if (ui_button(10, 154, 145, 34, "Settings", 0)) { overlay = OV_NONE; p3_pause(0); p3_settings(1); }
-    if (ui_button(165, 154, 145, 34, "Quit", 0)) overlay = OV_QUIT;
-    ui_text_fit(BOT_W / 2, 204, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "Quicksave and Quickload use the game's slot 4.");
-    ui_text_fit(BOT_W / 2, 220, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "SELECT or the tabs change the bottom page.");
+    if (ui_button(165, 154, 145, 34, "Exit game", 0)) overlay = OV_QUIT;
+    if (ui_button(10, 194, 300, 24, swap_ab ? "A and B: swapped (B confirms)" : "A and B: normal (A confirms)", swap_ab)) {
+        swap_ab = !swap_ab;
+        opts_save();
+    }
+    ui_text_fit(BOT_W / 2, 222, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "Quicksave and Quickload use the game's slot 4.");
 }
 
 static void menu_hotkeys(void)
