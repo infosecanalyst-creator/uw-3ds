@@ -86,9 +86,6 @@ void manual_draw_top(void)
     char para[1200];
     ui_rect(0, 0, TOP_W, TOP_H, COL_BG);
     if (!nch) { ui_text(16, 16, 0.5f, COL_TEXT, 0, 0, "The manual is missing from this build."); return; }
-    ui_rect(0, 0, TOP_W, 26, COL_PANEL);
-    ui_textf(10, 5, 0.55f, COL_GOLD, "%s", ch[cur].title);
-    ui_textf(TOP_W - 10 - 60, 7, 0.42f, COL_DIM, "%d / %d", cur + 1, nch);
     y = 34 - (float)scroll;
     for (p = ch[cur].body; *p;) {
         const char *e = strchr(p, '\n');
@@ -105,9 +102,12 @@ void manual_draw_top(void)
             y += 4;
         p = e ? e + 1 : p + n;
     }
-    if (y + scroll < 34 + scroll) { }
+    /* header and footer last, so scrolled text can never show through them */
+    ui_rect(0, 0, TOP_W, 26, COL_PANEL);
+    ui_textf(10, 5, 0.55f, COL_GOLD, "%s", ch[cur].title);
+    ui_textf(TOP_W - 10 - 60, 7, 0.42f, COL_DIM, "%d / %d", cur + 1, nch);
     ui_rect(0, TOP_H - 16, TOP_W, 16, COL_PANEL);
-    ui_text_fit(TOP_W / 2, TOP_H - 15, 0.4f, COL_DIM, C2D_AlignCenter, TOP_W - 10, "Sticks: scroll    D-pad: section    L R: previous / next    B: close");
+    ui_text_fit(TOP_W / 2, TOP_H - 15, 0.4f, COL_DIM, C2D_AlignCenter, TOP_W - 10, "Sticks: scroll   D-pad: section   L R: previous / next   B / START: close");
 }
 
 const char *manual_title(int chapter)
