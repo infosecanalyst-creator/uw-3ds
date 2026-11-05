@@ -509,7 +509,8 @@ static void draw_title(void)
     ui_text_fit(TOP_W / 2, 110, 0.5f, COL_TEXT, C2D_AlignCenter, TOP_W - 30, "New 3DS edition");
     ui_text(TOP_W / 2, 150, 0.42f, COL_DIM, C2D_AlignCenter | C2D_WordWrap, TOP_W - 60,
             "Play the menus on the touch screen with the stylus. Once you are in the Abyss, the 3D view moves up here.");
-    ui_text_fit(TOP_W / 2, TOP_H - 20, 0.38f, COL_DIM, C2D_AlignCenter, TOP_W - 20, "START: port menu and manual");
+    /* kept above the toast box (TOP_H-26) and the "Paused" bar (TOP_H-14) so nothing overlaps */
+    ui_text_fit(TOP_W / 2, TOP_H - 42, 0.38f, COL_DIM, C2D_AlignCenter, TOP_W - 20, "START: port menu and manual");
 }
 
 void front_draw_top(int eye, float iod)
