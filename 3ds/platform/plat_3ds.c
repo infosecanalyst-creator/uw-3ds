@@ -573,11 +573,45 @@ static void game_input(u32 down, u32 held_k, u32 up, circlePosition cp, circlePo
     was_touching = touching;
 }
 
+static int swapped;                 /* ZL: the game on the top screen, the dashboard on the touchscreen */
+
+/* the game screen (the picture and the front end's overlay), 320x240, at the screen's origin */
+static void draw_game_layer(int sopen)
+{
+    if (sopen) {
+        C2D_DrawImageAt(limg, 0, 20, 0.5f, NULL, 0.5f, 0.5f);
+    } else {
+        float gh = front_game_height();
+        if (gh > 0) C2D_DrawImageAt(gimg, 0, 0, 0.5f, NULL, 320.0f / pw, gh / ph);
+        front_draw_bottom();
+    }
+}
+
 static void draw(void)
 {
     float iod = osGet3DSliderState();
     int sopen = settings_open();
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    if (swapped) {
+        /* top: the game, centred (320 of 400 wide, 1:1); bottom: the dashboard at 0.8 so it all fits */
+        int eye;
+        for (eye = 0; eye < (iod > 0.0f ? 2 : 1); eye++) {
+            C3D_RenderTarget *tg = eye ? top_r : top_l;
+            C2D_TargetClear(tg, C2D_Color32(0, 0, 0, 255));
+            C2D_SceneBegin(tg);
+            C2D_ViewTranslate(40.0f, 0.0f);
+            draw_game_layer(sopen);
+            C2D_ViewReset();
+        }
+        C2D_TargetClear(bot, C2D_Color32(0, 0, 0, 255));
+        C2D_SceneBegin(bot);
+        C2D_ViewTranslate(0.0f, 24.0f);
+        C2D_ViewScale(0.8f, 0.8f);
+        front_draw_top(0, 0.0f);
+        C2D_ViewReset();
+        C3D_FrameEnd(0);
+        return;
+    }
     /* top: the dashboard (or, while the settings screen is open, the screen at a size to read) */
     C2D_TargetClear(top_l, C2D_Color32(0, 0, 0, 255));
     C2D_SceneBegin(top_l);
@@ -593,13 +627,7 @@ static void draw(void)
     /* bottom: the game */
     C2D_TargetClear(bot, C2D_Color32(0, 0, 0, 255));
     C2D_SceneBegin(bot);
-    if (sopen) {
-        C2D_DrawImageAt(limg, 0, 20, 0.5f, NULL, 0.5f, 0.5f);
-    } else {
-        float gh = front_game_height();
-        if (gh > 0) C2D_DrawImageAt(gimg, 0, 0, 0.5f, NULL, 320.0f / pw, gh / ph);
-        front_draw_bottom();
-    }
+    draw_game_layer(sopen);
     C3D_FrameEnd(0);
 }
 
@@ -662,6 +690,9 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         hidCstickRead(&cs);
         touching = (held_k & KEY_TOUCH) != 0;
         hidTouchRead(&t);
+        if (down & KEY_ZL) swapped = !swapped;          /* ZL swaps the screens at any time */
+        down &= ~KEY_ZL; held_k &= ~KEY_ZL; up &= ~KEY_ZL;
+        if (swapped) touching = 0;                      /* the touchscreen is the dashboard then: look, don't touch */
         taps_run();
         if (settings_open()) settings_input(down, touching, t);
         else game_input(down, held_k, up, cp, cs, touching, t);

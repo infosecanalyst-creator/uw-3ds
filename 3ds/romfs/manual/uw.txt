@@ -22,6 +22,7 @@ B: escape (close a scroll, leave a menu).
 D-pad: cast the spell on that hotkey (see Magic).
 SELECT: the next tab on the bottom screen. Hold SELECT and use the Circle Pad to scroll a page, or L and R to step through it (levels on the Map, people in the Journal).
 START: the port menu.
+ZL: swap the screens, at any time. The game goes up on the top screen (the stylus is switched off while swapped, so you cannot touch the game) and the dashboard comes down. Press ZL again to swap back.
 
 # The cursor
 Many actions work on whatever is under the game's cursor. The cursor stays wherever you last touched the screen.

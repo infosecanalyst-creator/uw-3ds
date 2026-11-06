@@ -7,7 +7,7 @@ A dual-screen 3DS port of *Ultima Underworld: The Stygian Abyss* and *Ultima Und
 ## What it is
 - **Top screen:** the game's 3D view (and conversations) at about twice the size, with stereoscopic depth from the 3D slider.
 - **Bottom screen:** the whole game screen, played with the stylus as the mouse (hold R for the right button), above tabs for dashboard pages: live Map (from the game's own automap, with your map notes), Status, message Log, conversation Journal and Spells (your spell book and hotkeys).
-- **Controls:** Circle Pad walks and turns, C-Stick slides and looks, L attacks, A uses (confirm), X looks, Y the map, ZR jumps, B goes back, D-pad casts spell hotkeys, SELECT changes the page, START opens the port menu (quicksave/quickload, hotkeys, map, manual, settings, an A/B swap, exit).
+- **Controls:** Circle Pad walks and turns, C-Stick slides and looks, L attacks, A uses (confirm), X looks, Y the map, ZR jumps, B goes back, D-pad casts spell hotkeys, SELECT changes the page, ZL swaps the screens, START opens the port menu (quicksave/quickload, hotkeys, map, manual, settings, an A/B swap, exit).
 - The system keyboard for typed text (character name, mantras, conversation answers).
 - A built-in manual.
 - Underworld Exhumed's enhancements and bug fixes, on by default and switchable in Settings.
