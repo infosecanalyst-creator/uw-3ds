@@ -513,9 +513,37 @@ static void draw_title(void)
     ui_text_fit(TOP_W / 2, TOP_H - 42, 0.38f, COL_DIM, C2D_AlignCenter, TOP_W - 20, "START: port menu and manual");
 }
 
+/* "Working...": the game's loop has not come round for a third of a second (loading a level,
+   saving, a long spell), so say so with a moving bar rather than look frozen. */
+extern volatile unsigned uw_passes;
+static int busy_frames;
+static void busy_update(void)
+{
+    static unsigned last_pass, last_frame;
+    unsigned f = p3_frame();
+    if (f == last_frame) return;            /* once a frame, not once an eye */
+    last_frame = f;
+    if (uw_passes != last_pass) { last_pass = uw_passes; busy_frames = 0; }
+    else if (busy_frames < 100000) busy_frames++;
+}
+
+static void busy_draw(void)
+{
+    if (busy_frames < 20) return;
+    {
+        float w = 150, x = (TOP_W - w) / 2, y = 8, ph = (float)(p3_frame() % 60) / 60.0f;
+        float seg = 50, sx = x + 2 + (w - 4 - seg) * (ph < 0.5f ? ph * 2 : (1 - ph) * 2);
+        ui_frame(x, y, w, 24, COL_PANEL2, COL_GOLD);
+        ui_text_fit(TOP_W / 2, y + 1, 0.42f, COL_TEXT, C2D_AlignCenter, w - 10, "Working...");
+        ui_rect(x + 2, y + 18, w - 4, 4, COL_SHADE);
+        ui_rect(sx, y + 18, seg, 4, COL_GOLD);
+    }
+}
+
 void front_draw_top(int eye, float iod)
 {
     const struct uwsnap *s = uw_snap();
+    busy_update();
     ui_begin();
     ui_rect(0, 0, TOP_W, TOP_H, COL_BG);
     if (overlay == OV_MANUAL) { manual_draw_top(); return; }
@@ -532,6 +560,7 @@ void front_draw_top(int eye, float iod)
         ui_rect(0, TOP_H - 14, TOP_W, 14, COL_SHADE);
         ui_text(TOP_W / 2, TOP_H - 14, 0.38f, COL_GOLD, C2D_AlignCenter, 0, "Paused: the port menu is open");
     }
+    busy_draw();
 }
 
 /* ---- the port menu, on the bottom screen ---- */
