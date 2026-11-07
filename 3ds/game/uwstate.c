@@ -128,6 +128,8 @@ static void fill_spells(void)
     spells_done = 1;
 }
 
+volatile int uw_busy;                  /* set while the game saves or loads: the dashboard shows "Working..." */
+
 static void run_request(void)
 {
     int slot;
@@ -137,6 +139,7 @@ static void run_request(void)
         uwglue_result(r == 1 ? "You cannot save just now." : "You cannot restore just now.");
         return;
     }
+    uw_busy = 1;
     if (r == 1) {
         port_quicksave_desc = "Quicksave";
         DoSaveRest(0, slot);
@@ -148,6 +151,7 @@ static void run_request(void)
         punt_fightmode();
         uwglue_result("Quickloaded.");
     }
+    uw_busy = 0;
 }
 
 volatile unsigned uw_passes;          /* the game's main loop passes, for the log */
