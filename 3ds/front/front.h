@@ -3,6 +3,9 @@
 #define UW3DS_FRONT_H
 #include <3ds.h>
 
+/* front.c */
+u32 front_remap(u32 keys);              /* left-handed play: swap the D-pad and A/B/X/Y */
+
 /* manual.c */
 void manual_load(void);
 int manual_chapters(void);

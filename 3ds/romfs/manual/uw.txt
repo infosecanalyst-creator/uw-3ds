@@ -67,6 +67,7 @@ Quicksave, Quickload: the game's slot 4.
 Spell hotkeys: put spells on the D-pad.
 Map: zoom in and out, and look at other levels.
 Manual: this book.
+A/B and Left hand: A/B swaps which of the two confirms. Left hand: on swaps the D-pad with the face buttons: Y is up, A is right, B is down, X is left, and the reverse. Your choice is kept.
 Settings: the port's settings: sound, the enhancements and fixes.
 Quit: leave the game (save first).
 

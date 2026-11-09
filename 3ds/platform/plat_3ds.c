@@ -19,6 +19,7 @@
 #include "plat.h"
 #include "plat3ds.h"
 #include "ui/settings.h"
+u32 front_remap(u32 keys);   /* front.c: left-handed play */
 
 void port_pause(int on);               /* the runtime's sys/pit.c */
 void port_crash_handlers(void);        /* sys/crash.c */
@@ -750,7 +751,7 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         int touching;
         hidScanInput();
         irrstScanInput();
-        down = hidKeysDown(); held_k = hidKeysHeld(); up = hidKeysUp();
+        down = front_remap(hidKeysDown()); held_k = front_remap(hidKeysHeld()); up = front_remap(hidKeysUp());
         hidCircleRead(&cp);
         hidCstickRead(&cs);
         touching = (held_k & KEY_TOUCH) != 0;

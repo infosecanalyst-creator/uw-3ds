@@ -43,6 +43,7 @@ static char toast[96];
 static unsigned toast_until;
 static int moved_since_touch;
 static int select_used;
+static int lefty;                       /* Settings: left-handed play, the D-pad and A/B/X/Y swap roles */
 static int swap_ab;                     /* Settings: swap the A and B buttons (A confirms by default) */
 #define CONFIRM_KEY (swap_ab ? KEY_B : KEY_A)
 #define BACK_KEY (swap_ab ? KEY_A : KEY_B)
@@ -77,7 +78,7 @@ static void opts_save(void)
 {
     FILE *f = fopen(OPTS, "w");
     if (!f) return;
-    fprintf(f, "page=%d\nzoom=%d\nhotkeys=%d,%d,%d,%d\nswapab=%d\n", tab, map_zoom_level(), hotkey[0], hotkey[1], hotkey[2], hotkey[3], swap_ab);
+    fprintf(f, "page=%d\nzoom=%d\nhotkeys=%d,%d,%d,%d\nswapab=%d\nlefty=%d\n", tab, map_zoom_level(), hotkey[0], hotkey[1], hotkey[2], hotkey[3], swap_ab, lefty);
     fclose(f);
 }
 
@@ -92,8 +93,25 @@ static void opts_load(void)
         if (sscanf(l, "zoom=%d", &z) == 1) map_zoom(z - map_zoom_level());
         sscanf(l, "hotkeys=%d,%d,%d,%d", &hotkey[0], &hotkey[1], &hotkey[2], &hotkey[3]);
         if (sscanf(l, "swapab=%d", &z) == 1) swap_ab = z != 0;
+        if (sscanf(l, "lefty=%d", &z) == 1) lefty = z != 0;
     }
     fclose(f);
+}
+
+/* Left-handed play: the D-pad and the face buttons swap jobs (Y<->up, A<->right, B<->down, X<->left).
+   Applied once to the pad state before anything reads it. */
+u32 front_remap(u32 m)
+{
+    static const struct { u32 a, b; } pr[4] = { { KEY_Y, KEY_DUP }, { KEY_A, KEY_DRIGHT }, { KEY_B, KEY_DDOWN }, { KEY_X, KEY_DLEFT } };
+    u32 r = m;
+    int i;
+    if (!lefty) return m;
+    for (i = 0; i < 4; i++) r &= ~(pr[i].a | pr[i].b);
+    for (i = 0; i < 4; i++) {
+        if (m & pr[i].a) r |= pr[i].b;
+        if (m & pr[i].b) r |= pr[i].a;
+    }
+    return r;
 }
 
 void front_init(void)
@@ -597,8 +615,12 @@ static void menu_main(void)
     if (ui_button_en(165, 114, 145, 34, "Map", 0, s->in_game)) overlay = OV_MAP;
     if (ui_button(10, 154, 145, 34, "Settings", 0)) { overlay = OV_NONE; p3_pause(0); p3_settings(1); }
     if (ui_button(165, 154, 145, 34, "Exit game", 0)) overlay = OV_QUIT;
-    if (ui_button(10, 194, 300, 24, swap_ab ? "A and B: swapped (B confirms)" : "A and B: normal (A confirms)", swap_ab)) {
+    if (ui_button(10, 192, 145, 26, swap_ab ? "A/B: swapped" : "A/B: normal", swap_ab)) {
         swap_ab = !swap_ab;
+        opts_save();
+    }
+    if (ui_button(165, 192, 145, 26, lefty ? "Left hand: on" : "Left hand: off", lefty)) {
+        lefty = !lefty;
         opts_save();
     }
     ui_text_fit(BOT_W / 2, 222, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "Quicksave and Quickload use the game's slot 4.");
