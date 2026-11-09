@@ -86,6 +86,8 @@ int front_menu_open(void);
 unsigned front_touch_button(void);
 /* The face buttons for confirm and back: A and B, or swapped by the Settings option. */
 unsigned front_confirm_key(void);
+int front_lefty(void);
+const char *front_key_name(unsigned k);
 unsigned front_back_key(void);
 /* Draws the top screen (the dashboard). EYE is 0 for the left image (or mono), 1 for the right. */
 void front_draw_top(int eye, float iod);

@@ -49,6 +49,16 @@ static int swap_ab;                     /* Settings: swap the A and B buttons (A
 #define BACK_KEY (swap_ab ? KEY_A : KEY_B)
 unsigned front_confirm_key(void) { return CONFIRM_KEY; }
 unsigned front_back_key(void) { return BACK_KEY; }
+int front_lefty(void) { return lefty; }
+/* The name of the button the player presses for a logical key (left-handed mode swaps D-pad and A/B/X/Y). */
+const char *front_key_name(unsigned k)
+{
+    if (k == KEY_A) return lefty ? "D-Right" : "A";
+    if (k == KEY_B) return lefty ? "D-Down" : "B";
+    if (k == KEY_X) return lefty ? "D-Left" : "X";
+    if (k == KEY_Y) return lefty ? "D-Up" : "Y";
+    return "?";
+}
 
 /* the game's 3D view on its 320x200 screen (UWEDIT.C's place_3d_view: x, the bottom row counted
    from the screen's bottom, width, height) */
@@ -669,7 +679,8 @@ static void menu_map(void)
     if (ui_button(165, 84, 145, 34, "Level down", 0)) map_level(1);
     snprintf(b, sizeof b, "%s", v ? "Back to my level" : "Showing your level");
     if (ui_button(10, 128, 300, 34, b, !v)) map_follow();
-    ui_text_fit(BOT_W / 2, 172, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "D-pad: choose a button    A: press it");
+    snprintf(b, sizeof b, "%s: choose a button    %s: press it", lefty ? "A/B/X/Y" : "D-pad", front_key_name(CONFIRM_KEY));
+    ui_text_fit(BOT_W / 2, 172, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, b);
     if (ui_button(230, 200, 84, 30, "Done", 0)) overlay = OV_MENU;
 }
 
