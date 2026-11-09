@@ -38,6 +38,11 @@ void ui_frame(float x, float y, float w, float h, u32 fill, u32 edge);
 void ui_bar(float x, float y, float w, float h, float frac, u32 col, const char *label);
 /* A button on the bottom screen; 1 when the touch released inside it this frame. */
 int ui_button(float x, float y, float w, float h, const char *label, int lit);
+/* Buttons without the stylus (see ui.c): ui_nav_frame(on) before a screen's buttons are drawn,
+   ui_nav(dx, dy, press) from the D-pad and A; ui_nav_reset() when a different menu opens. */
+void ui_nav_frame(int on);
+void ui_nav(int dx, int dy, int press);
+void ui_nav_reset(void);
 /* The same, but ENABLED 0 draws it greyed out: no press look, no click, always returns 0. */
 int ui_button_en(float x, float y, float w, float h, const char *label, int lit, int enabled);
 void ui_touch(int touching, int x, int y);     /* the frame's touch, for ui_button */

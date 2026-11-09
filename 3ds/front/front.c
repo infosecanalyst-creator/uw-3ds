@@ -185,10 +185,12 @@ static void stick_keys(circlePosition cp, circlePosition cs, int scrolling)
     p3_key(K_W, run);
     p3_key(K_X, fwd && !run);
     p3_key(K_S, back);
-    p3_key(K_LEFT, l);
-    p3_key(K_RIGHT, r);
-    p3_key(K_A, cs.dx < -40);
-    p3_key(K_D, cs.dx > 40);
+    /* Circle Pad: walk, run, back and strafe (UW's A and D slide); C-stick: turn (the arrows)
+       and look up and down */
+    p3_key(K_A, l);
+    p3_key(K_D, r);
+    p3_key(K_LEFT, cs.dx < -40);
+    p3_key(K_RIGHT, cs.dx > 40);
     p3_key(K_UP, cs.dy > 40);
     p3_key(K_DOWN, cs.dy < -40);
 }
@@ -236,6 +238,8 @@ static void tab_scroll(int d, int lr)
 }
 
 static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, int touching, touchPosition t);
+
+int front_menu_open(void) { return overlay != 0; }
 
 float front_game_height(void)
 {
@@ -561,15 +565,13 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
         if (down & (BACK_KEY | KEY_START)) overlay = OV_MENU;
         return 1;
     }
-    if (overlay == OV_MAP) {
-        if (down & KEY_DUP) map_zoom(1);
-        if (down & KEY_DDOWN) map_zoom(-1);
-        if (down & KEY_DLEFT) map_level(-1);
-        if (down & KEY_DRIGHT) map_level(1);
-    }
+    /* every button here can be reached without the stylus: the D-pad moves the gold
+       highlight, the confirm button (A) presses it */
+    ui_nav((down & KEY_DRIGHT) ? 1 : (down & KEY_DLEFT) ? -1 : 0,
+           (down & KEY_DDOWN) ? 1 : (down & KEY_DUP) ? -1 : 0, (down & CONFIRM_KEY) != 0);
     if (overlay == OV_HOTKEYS) {
-        if ((held & KEY_DUP) || cp.dy > 40) { if (pick_scroll > 0 && (p3_frame() & 3) == 0) pick_scroll--; }
-        if ((held & KEY_DDOWN) || cp.dy < -40) { if ((p3_frame() & 3) == 0) pick_scroll++; }
+        if (cp.dy > 40 || cs.dy > 40) { if (pick_scroll > 0 && (p3_frame() & 3) == 0) pick_scroll--; }
+        if (cp.dy < -40 || cs.dy < -40) { if ((p3_frame() & 3) == 0) pick_scroll++; }
     }
     if (down & BACK_KEY) overlay = overlay == OV_MENU ? OV_NONE : OV_MENU;
     if (down & KEY_START) overlay = OV_NONE;
@@ -607,7 +609,7 @@ static void menu_hotkeys(void)
     const struct uwsnap *s = uw_snap();
     int n, i, row = 0, k;
     const struct uwspell *sp = uw_spells(&n);
-    ui_text(BOT_W / 2, 4, 0.5f, COL_GOLD, C2D_AlignCenter, 0, pick_spell < 0 ? "Tap a spell" : "Now tap a direction");
+    ui_text(BOT_W / 2, 4, 0.5f, COL_GOLD, C2D_AlignCenter, 0, pick_spell < 0 ? "Choose a spell" : "Now choose a direction");
     for (i = 0; i < n; i++) {
         float y;
         if (!spell_known(&sp[i], s->runes)) continue;
@@ -628,7 +630,7 @@ static void menu_hotkeys(void)
             else { hotkey[k] = -1; opts_save(); }
         }
     }
-    ui_text(212, 158, 0.36f, COL_DIM, C2D_WordWrap, 104, "Tap a direction alone to clear it.");
+    ui_text(212, 158, 0.36f, COL_DIM, C2D_WordWrap, 104, "Choose a direction alone to clear it.");
     for (k = 0; k < 4; k++)
         ui_textf(8, 162 + k * 13, 0.38f, COL_TEXT, "%-5s %s", dirs[k], hotkey[k] >= 0 && hotkey[k] < n ? sp[hotkey[k]].name : "-");
     if (ui_button(230, 206, 84, 28, "Done", 0)) overlay = OV_MENU;
@@ -645,7 +647,7 @@ static void menu_map(void)
     if (ui_button(165, 84, 145, 34, "Level down", 0)) map_level(1);
     snprintf(b, sizeof b, "%s", v ? "Back to my level" : "Showing your level");
     if (ui_button(10, 128, 300, 34, b, !v)) map_follow();
-    ui_text(BOT_W / 2, 172, 0.4f, COL_DIM, C2D_AlignCenter, 0, "D-pad: up/down zoom, left/right level");
+    ui_text_fit(BOT_W / 2, 172, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "D-pad: choose a button    A: press it");
     if (ui_button(230, 200, 84, 30, "Done", 0)) overlay = OV_MENU;
 }
 
@@ -671,6 +673,7 @@ static void menu_quit(void)
 int front_draw_bottom(void)
 {
     if (!overlay) {
+        ui_nav_frame(0);
         if (!uw_snap()->in_game) return 0;
         if (tab != TAB_GAME) {
             ui_rect(0, 0, PG_W, PG_H, COL_BG);
@@ -685,6 +688,11 @@ int front_draw_bottom(void)
         draw_tabs();
         return tab != TAB_GAME;
     }
+    {
+        static int last_ov;
+        if (overlay != last_ov) { ui_nav_reset(); last_ov = overlay; }
+    }
+    ui_nav_frame(overlay != OV_MANUAL);
     ui_rect(0, 0, BOT_W, BOT_H, C2D_Color32(18, 16, 14, 235));
     switch (overlay) {
     case OV_MENU: menu_main(); break;

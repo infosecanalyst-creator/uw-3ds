@@ -26,6 +26,7 @@ float ui_text(float x, float y, float size, u32 col, int flags, float wrap, cons
     if (!s || !*s) return 0;
     if (!C2D_TextParse(&t, tb, s)) return 0;
     C2D_TextOptimize(&t);
+    y = (float)(int)(y + 0.5f);         /* whole pixels down: no glyph row is split, so text stays crisp */
     if (flags & C2D_WordWrap)
         C2D_DrawText(&t, C2D_WithColor | flags, x, y, 0.5f, size, size, col, wrap);
     else
@@ -98,13 +99,66 @@ int ui_button_en(float x, float y, float w, float h, const char *label, int lit,
     return ui_button(x, y, w, h, label, lit);
 }
 
+/* ---- buttons without the stylus ----
+   A rule of all these ports: anything you can tap you can also reach with the buttons, so a
+   menu works when its screen can't be touched (swapped to the top) as well as when it can.
+   While ui_nav_frame(1) is in force, every button drawn registers its rectangle; the D-pad
+   moves a gold highlight to the nearest button in that direction (by the rectangles of the
+   frame before) and A presses the highlighted one, with the same press animation as a tap. */
+#define NAV_MAX 64
+static float nav_r[NAV_MAX][4], nav_prev[NAV_MAX][4];
+static int nav_n, nav_n_prev, nav_on, nav_focus, nav_fire, nav_flash;
+
+void ui_nav_frame(int on)
+{
+    memcpy(nav_prev, nav_r, sizeof nav_r);
+    nav_n_prev = nav_n;
+    nav_n = 0;
+    if (on && !nav_on) nav_focus = 0;
+    nav_on = on;
+    if (nav_focus >= nav_n_prev && nav_n_prev) nav_focus = nav_n_prev - 1;
+    if (nav_flash) nav_flash--;
+}
+
+void ui_nav_reset(void) { nav_focus = 0; nav_fire = 0; }
+
+void ui_nav(int dx, int dy, int press)
+{
+    int i, best = -1;
+    float cx, cy, bd = 1e9f;
+    if (!nav_on || !nav_n_prev) return;
+    if (press) { nav_fire = 1; nav_flash = 6; }
+    if (!dx && !dy) return;
+    cx = nav_prev[nav_focus][0] + nav_prev[nav_focus][2] / 2;
+    cy = nav_prev[nav_focus][1] + nav_prev[nav_focus][3] / 2;
+    for (i = 0; i < nav_n_prev; i++) {
+        float x = nav_prev[i][0] + nav_prev[i][2] / 2, y = nav_prev[i][1] + nav_prev[i][3] / 2;
+        float ax = (x - cx) * dx, ay = (y - cy) * dy, along, across, d;
+        if (i == nav_focus) continue;
+        along = dx ? ax : ay;                       /* how far in the asked direction */
+        across = dx ? (y - cy) : (x - cx);          /* how far off that line */
+        if (along < 2) continue;
+        d = along + 2.5f * (across < 0 ? -across : across);
+        if (d < bd) { bd = d; best = i; }
+    }
+    if (best >= 0) nav_focus = best;
+}
+
 int ui_button(float x, float y, float w, float h, const char *label, int lit)
 {
     int in = t_x >= x && t_x < x + w && t_y >= y && t_y < y + h;
     int in0 = t_x0 >= x && t_x0 < x + w && t_y0 >= y && t_y0 < y + h;
-    int pressed = t_now && in && in0;
-    ui_frame(x, y, w, h, pressed ? COL_EDGE : lit ? COL_PANEL2 : COL_PANEL, lit ? COL_GOLD : COL_EDGE);
-    ui_text_fit(x + w / 2, y + (h - 16) / 2, 0.5f, lit ? COL_GOLD : COL_TEXT, C2D_AlignCenter, w - 6, label);
+    int idx = nav_n < NAV_MAX ? nav_n++ : -1;
+    int focused = nav_on && idx == nav_focus;
+    int pressed = (t_now && in && in0) || (focused && nav_flash);
+    if (idx >= 0) { nav_r[idx][0] = x; nav_r[idx][1] = y; nav_r[idx][2] = w; nav_r[idx][3] = h; }
+    if (focused) {                                  /* a second gold ring outside: the highlight */
+        ui_rect(x - 3, y - 3, w + 6, 2, COL_GOLD); ui_rect(x - 3, y + h + 1, w + 6, 2, COL_GOLD);
+        ui_rect(x - 3, y - 1, 2, h + 2, COL_GOLD); ui_rect(x + w + 1, y - 1, 2, h + 2, COL_GOLD);
+    }
+    ui_frame(x, y, w, h, pressed ? COL_EDGE : (lit || focused) ? COL_PANEL2 : COL_PANEL, (lit || focused) ? COL_GOLD : COL_EDGE);
+    ui_text_fit(x + w / 2, y + (h - 16) / 2, 0.5f, (lit || focused) ? COL_GOLD : COL_TEXT, C2D_AlignCenter, w - 6, label);
+    if (focused && nav_fire) { nav_fire = 0; return 1; }
     return !t_now && t_was && in && in0;
 }
 

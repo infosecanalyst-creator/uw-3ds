@@ -10,8 +10,8 @@ Under the game is a row of tabs: Game, Map, Status, Log, Journal and Spells. The
 In this manual: the Circle Pad or C-stick scrolls, the D-pad moves between the sections on the bottom screen, L and R go to the previous or next section, and B or START closes it.
 
 # Buttons
-Circle Pad: walk forward (push all the way to run), back, turn left and right.
-C-stick: slide left and right, look up and down.
+Circle Pad: walk forward (push all the way to run) and back, and step sideways (strafe) left and right.
+C-stick: turn left and right, look up and down.
 L: attack. Hold it to draw back a stronger blow, release to swing.
 A: use whatever is under the cursor. On a person, talk to them.
 X: look at whatever is under the cursor.
@@ -22,7 +22,7 @@ B: escape (close a scroll, leave a menu).
 D-pad: cast the spell on that hotkey (see Magic).
 SELECT: the next tab on the bottom screen. Hold SELECT and use the Circle Pad to scroll a page, or L and R to step through it (levels on the Map, people in the Journal).
 START: the port menu.
-ZL: swap the screens, at any time. The game goes up on the top screen (the stylus is switched off while swapped, so you cannot touch the game) and the dashboard comes down. Press ZL again to swap back.
+ZL: swap the screens, at any time. The game goes up on the top screen, filling it, and the dashboard comes down. While swapped the touch screen is a touchpad: slide a finger or the stylus to move the game's cursor, and tap to click where it points (hold R while tapping for the right button). Press ZL again to swap back.
 
 # The cursor
 Many actions work on whatever is under the game's cursor. The cursor stays wherever you last touched the screen.
@@ -61,7 +61,7 @@ Quicksave and Quickload are in the port menu. They use the game's own save slot 
 Closing the 3DS lid pauses the game.
 
 # The port menu
-START opens it. The game waits while it is open.
+START opens it. The game waits while it is open. Tap a button, or move the gold highlight with the D-pad and press A.
 Resume: back to the game.
 Quicksave, Quickload: the game's slot 4.
 Spell hotkeys: put spells on the D-pad.

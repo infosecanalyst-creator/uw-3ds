@@ -541,6 +541,35 @@ static void settings_input(u32 down, int touching, touchPosition t)
     sync_open();
 }
 
+/* ZL swapped: the touchscreen moves the game's cursor like a laptop's touchpad (by how far the
+   finger slides, not where it is) and a short tap clicks where the cursor is. The game draws its
+   own cursor, so you see where it points on the top screen. */
+static void touchpad(int touching, touchPosition t)
+{
+    static int was, moved, lx, ly, release_due;
+    static unsigned start, b;
+    if (front_menu_open()) { was = 0; return; }
+    if (touching) {
+        if (!was) { lx = t.px; ly = t.py; moved = 0; start = frames; }
+        else {
+            int dx = t.px - lx, dy = t.py - ly;
+            if (dx || dy) {
+                /* the game's mouse is in its 320x200 coordinates; a little faster than 1:1 so
+                   one slide crosses the screen */
+                p3_mouse_move(mx + dx * 1.25f, my + dy * 1.1f);
+                moved += abs(dx) + abs(dy);
+                lx = t.px; ly = t.py;
+            }
+        }
+    } else if (was && moved < 8 && frames - start < 20) {
+        b = front_touch_button();
+        p3_mouse_button(b, 1);
+        release_due = frames + 6;           /* held 100 ms, so the game's poll sees it */
+    }
+    if (release_due && (int)(frames - release_due) >= 0) { p3_mouse_button(b, 0); release_due = 0; }
+    was = touching;
+}
+
 static void game_input(u32 down, u32 held_k, u32 up, circlePosition cp, circlePosition cs, int touching, touchPosition t)
 {
     static int was_touching, release_due;
@@ -574,6 +603,31 @@ static void game_input(u32 down, u32 held_k, u32 up, circlePosition cp, circlePo
 }
 
 static int swapped;                 /* ZL: the game on the top screen, the dashboard on the touchscreen */
+static C3D_RenderTarget *top_w;     /* the top screen at 800x240 (wide mode) */
+static int wide_on;
+
+/* Text on the top screen is sharper in its 800-pixel-wide mode, which the New 3DS has for 2D:
+   the screen's own columns, where the normal mode doubles each pixel. So with the 3D slider down
+   the top screen is drawn 800 wide (everything scaled 2x across, so the same 400x240 layout),
+   and with the slider up it goes back to the two 400-wide eyes. */
+static void top_mode(float iod)
+{
+    int want = iod <= 0.0f && top_w;
+    if (want == wide_on) return;
+    gfxSetWide(want);
+    gfxSet3D(!want);
+    wide_on = want;
+}
+
+/* begin drawing the top screen (eye 0 left, 1 right) in its 400x240 coordinates */
+static void top_begin(int eye)
+{
+    C3D_RenderTarget *tg = wide_on ? top_w : eye ? top_r : top_l;
+    C2D_TargetClear(tg, C2D_Color32(0, 0, 0, 255));
+    C2D_SceneBegin(tg);
+    C2D_ViewReset();
+    if (wide_on) C2D_ViewScale(2.0f, 1.0f);
+}
 
 /* the game screen (the picture and the front end's overlay), 320x240, at the screen's origin */
 static void draw_game_layer(int sopen)
@@ -591,16 +645,21 @@ static void draw(void)
 {
     float iod = osGet3DSliderState();
     int sopen = settings_open();
+    top_mode(iod);
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     if (swapped) {
-        /* top: the game, centred (320 of 400 wide, 1:1); bottom: the dashboard at 0.8 so it all fits */
-        int eye;
+        /* top: the game picture filling the whole screen (the touchscreen can't reach it, so the
+           tabs are left off); with the port menu or the settings open, that layer centred at 1:1
+           so its buttons read as drawn. bottom: the dashboard at 0.8 so it all fits */
+        int eye, fill = !sopen && !front_menu_open();
         for (eye = 0; eye < (iod > 0.0f ? 2 : 1); eye++) {
-            C3D_RenderTarget *tg = eye ? top_r : top_l;
-            C2D_TargetClear(tg, C2D_Color32(0, 0, 0, 255));
-            C2D_SceneBegin(tg);
-            C2D_ViewTranslate(40.0f, 0.0f);
-            draw_game_layer(sopen);
+            top_begin(eye);
+            if (fill) {
+                C2D_DrawImageAt(gimg, 0, 0, 0.5f, NULL, 400.0f / pw, 240.0f / ph);
+            } else {
+                C2D_ViewTranslate(40.0f, 0.0f);
+                draw_game_layer(sopen);
+            }
             C2D_ViewReset();
         }
         C2D_TargetClear(bot, C2D_Color32(0, 0, 0, 255));
@@ -613,16 +672,16 @@ static void draw(void)
         return;
     }
     /* top: the dashboard (or, while the settings screen is open, the screen at a size to read) */
-    C2D_TargetClear(top_l, C2D_Color32(0, 0, 0, 255));
-    C2D_SceneBegin(top_l);
+    top_begin(0);
     if (sopen) {
         C2D_DrawImageAt(limg, 0, (240 - SET_H * 0.6f) / 2, 0.5f, NULL, 0.625f, 0.6f);
     } else
         front_draw_top(0, iod);
-    if (iod > 0.0f && !sopen) {
-        C2D_TargetClear(top_r, C2D_Color32(0, 0, 0, 255));
-        C2D_SceneBegin(top_r);
+    C2D_ViewReset();
+    if (iod > 0.0f && !sopen && !wide_on) {
+        top_begin(1);
         front_draw_top(1, iod);
+        C2D_ViewReset();
     }
     /* bottom: the game */
     C2D_TargetClear(bot, C2D_Color32(0, 0, 0, 255));
@@ -656,6 +715,12 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS * 4);
     C2D_Prepare();
     top_l = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+    /* the top screen's 800-wide mode, for when the 3D slider is down (see top_begin) */
+    top_w = C3D_RenderTargetCreate(240, 800, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+    if (top_w) C3D_RenderTargetSetOutput(top_w, GFX_TOP, GFX_LEFT,
+        GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |
+        GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) |
+        GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
     top_r = C2D_CreateScreenTarget(GFX_TOP, GFX_RIGHT);
     bot = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     /* the game's picture: up to 512x512 (a 640x480 mode is shown at what fits) */
@@ -692,7 +757,12 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         hidTouchRead(&t);
         if (down & KEY_ZL) swapped = !swapped;          /* ZL swaps the screens at any time */
         down &= ~KEY_ZL; held_k &= ~KEY_ZL; up &= ~KEY_ZL;
-        if (swapped) touching = 0;                      /* the touchscreen is the dashboard then: look, don't touch */
+        if (swapped && !settings_open()) {
+            /* the touchscreen is a touchpad for the game on the top screen (or, with the port
+               menu open, nothing: its buttons are reached with the D-pad and A) */
+            touchpad(touching, t);
+            touching = 0;
+        }
         taps_run();
         if (settings_open()) settings_input(down, touching, t);
         else game_input(down, held_k, up, cp, cs, touching, t);

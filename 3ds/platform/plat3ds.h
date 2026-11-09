@@ -80,6 +80,8 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
 /* How many of the bottom screen's lines (from its top) show the game, which the stylus plays:
    240 for the whole screen, less above the front end's tabs, 0 while a page covers it. */
 float front_game_height(void);
+/* The port menu (or the manual) is open on the touchscreen layer. */
+int front_menu_open(void);
 /* Which mouse button a new touch presses: PLAT_BUTTON_LEFT, or _RIGHT while a modifier is held. */
 unsigned front_touch_button(void);
 /* The face buttons for confirm and back: A and B, or swapped by the Settings option. */
