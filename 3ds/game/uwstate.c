@@ -20,6 +20,7 @@
 #include "ui.h"
 #include "uwsnap.h"
 #include "uwglue.h"
+void p3_park_point(void);
 
 #ifdef GAME_UW2
 #define NUM_RUNE_SPELLS 0x40           /* RUNES.C's try_cast searches the first 64 */
@@ -158,6 +159,7 @@ volatile unsigned uw_passes;          /* the game's main loop passes, for the lo
 
 void port_front_point(void)
 {
+    p3_park_point();                    /* leaving: the game stops here (platform/plat_3ds.c) */
     uw_passes++;
     struct uwsnap *s;
     if (in_game && !spells_done) fill_spells();

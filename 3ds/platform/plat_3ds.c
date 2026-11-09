@@ -28,6 +28,7 @@ uint32_t pit_bios_ticks(void);         /* sys/pit.c */
 static const PlatHooks *hooks;
 static PlatConfig live;
 static volatile int game_done, game_status, quit_req;
+static Thread game_thread_h;
 static uint64_t t0;
 static unsigned frames;
 
@@ -81,9 +82,27 @@ __attribute__((constructor)) static void p3_early(void)
 
 /* ---- time and threads ---- */
 
-uint64_t plat_counter(void) { return svcGetSystemTick(); }
+/* ---- leaving: every other thread parks itself before the app exits ----
+   The game's thread (and the timer's and the synthesizer's) run on their own cores. Returning
+   from main while they run lets the C library free the heap, their stacks with it, under them
+   (a data abort as HOME closes the app); ending the process abruptly instead skips telling the
+   system we left (the console restarted). So, on the way out, park_req is set and each of those
+   threads, the next time it asks the time, sleeps, or reaches the game's main loop, stops in a
+   kernel wait that never ends; then the app exits the normal way and the kernel ends them. */
+static volatile int park_req, parked_game;
+static Handle park_event;
+
+void p3_park_point(void)
+{
+    if (!park_req || !threadGetCurrent()) return;       /* never the main thread */
+    if (threadGetCurrent() == game_thread_h) parked_game = 1;
+    __dsb();
+    for (;;) svcWaitSynchronization(park_event, U64_MAX);
+}
+
+uint64_t plat_counter(void) { p3_park_point(); return svcGetSystemTick(); }
 uint64_t plat_counter_hz(void) { return SYSCLOCK_ARM11; }
-void plat_sleep_ns(uint64_t ns) { svcSleepThread((s64)ns); }
+void plat_sleep_ns(uint64_t ns) { p3_park_point(); svcSleepThread((s64)ns); }
 uint64_t p3_ms(void) { return (svcGetSystemTick() - t0) / (SYSCLOCK_ARM11 / 1000); }
 unsigned p3_frame(void) { return frames; }
 
@@ -615,8 +634,10 @@ static void top_mode(float iod)
 {
     int want = iod <= 0.0f && top_w;
     if (want == wide_on) return;
-    gfxSetWide(want);
-    gfxSet3D(!want);
+    /* libctru keeps 3D and wide in one setting (gfxTopMode): setting one replaces the other,
+       so call only the one wanted; calling both left it in neither */
+    if (want) gfxSetWide(true);
+    else gfxSet3D(true);
     wide_on = want;
 }
 
@@ -741,8 +762,10 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
     game_fn = game; game_arg = arg;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
     /* a large stack: host frames are bigger than DOS's */
+    svcCreateEvent(&park_event, RESET_ONESHOT);
     gt = threadCreate(game_entry, NULL, 4 << 20, prio + 1, game_core, true);
     if (!gt && game_core) gt = threadCreate(game_entry, NULL, 4 << 20, prio + 1, game_core == 2 ? 1 : 0, true);
+    game_thread_h = gt;
     if (!gt) { plat_message(1, UW3DS_TITLE, "The game's thread could not start (out of memory)."); return 1; }
     while (aptMainLoop() && !game_done && !quit_req) {
         u32 down, held_k, up;
@@ -801,30 +824,25 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
     }
     if (!game_done && hooks->lifecycle) hooks->lifecycle(PLAT_QUIT_REQUEST);
     {
-        /* give the game a moment to finish on its own (a quit it asked for itself is already done) */
+        /* park every other thread (see p3_park_point), waiting up to a second for the game's */
         int i;
-        for (i = 0; i < 25 && !game_done; i++) svcSleepThread(20000000LL);
+        extern void uw_journal_flush(void);
+        uw_journal_flush();                 /* before parking: the game can't be holding its lock then */
+        park_req = 1;
+        __dsb();
+        for (i = 0; i < 50 && !parked_game && !game_done; i++) svcSleepThread(20000000LL);
+        svcSleepThread(50000000LL);         /* the timer and synthesizer wake often: they stop too */
     }
     audio_on = 0;
     LightEvent_Signal(&aev);
     fprintf(stderr, PLAT_NAME ": %u frames\n", frames);
     {
-        /* The game's thread (and the timer's and the synthesizer's) may still be running on the
-           other cores. Returning would run the C library's exit, which frees the heap, those
-           threads' stacks included, under them: a data abort on the game's core as HOME closes the
-           app. So write out what the port keeps (the journal, open files), stop the sound and the
-           screens, and end the process at once: the kernel stops every thread before it frees
-           anything. The game writes its own saves when it saves, so nothing of the game's is lost. */
-        extern void uw_journal_flush(void);
-        uw_journal_flush();
         fflush(NULL);
         svcSleepThread(30000000LL);        /* the sound thread sees audio_on and stops */
         ndspExit();
+        if (wide_on) { gfxSet3D(true); wide_on = 0; }
         C2D_Fini();
         C3D_Fini();
-        gfxExit();
-        romfsExit();
-        svcExitProcess();
     }
     return game_status;
 }

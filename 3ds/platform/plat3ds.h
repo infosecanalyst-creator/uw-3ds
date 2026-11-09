@@ -79,6 +79,8 @@ void front_init(void);
 int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs, int touching, touchPosition t);
 /* How many of the bottom screen's lines (from its top) show the game, which the stylus plays:
    240 for the whole screen, less above the front end's tabs, 0 while a page covers it. */
+/* A thread other than the main one stops here for good once the app is leaving. */
+void p3_park_point(void);
 float front_game_height(void);
 /* The port menu (or the manual) is open on the touchscreen layer. */
 int front_menu_open(void);
