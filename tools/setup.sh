@@ -3,8 +3,8 @@
 # the port's patches. Run once from the repository's top folder; then build with
 #   python3 tools/build3ds.py uw1      (or uw2)
 set -e
-UE_COMMIT=e5deadd6945b492636aadccc14f52caa908b4186     # abedegno/underworld-exhumed
-EXHUME_COMMIT=a34316463c230bafa3d4f0aa3b894a574e5fc738 # abedegno/Exhume (its submodule)
+UE_COMMIT=d8e0581fd2d2d4814b80da11e37b60f8f3daa9f6     # abedegno/underworld-exhumed
+EXHUME_COMMIT=e6dba84517f11357f7bd15640d5cb782202f88f3 # abedegno/Exhume (its submodule)
 NUKED_COMMIT=765ec962e473aeb767e4cba74ffdc8f588ffbfe8                                    # nukeykt/Nuked-OPL3 (LGPL-2.1, not committed here)
 if [ ! -d upstream ]; then
   git clone https://github.com/abedegno/underworld-exhumed.git upstream
