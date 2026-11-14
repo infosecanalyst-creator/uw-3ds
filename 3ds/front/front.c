@@ -522,9 +522,9 @@ static void draw_tabs(void)
 static void draw_big_view(int eye, float iod)
 {
     float sc = 392.0f / VIEW_W, w, h, x, y, shift = (eye ? 1 : -1) * iod * 7.0f;
-    if (232.0f / VIEW_H < sc) sc = 232.0f / VIEW_H;
+    if (216.0f / VIEW_H < sc) sc = 216.0f / VIEW_H;   /* clear of the hint strip at y 224 */
     w = VIEW_W * sc; h = VIEW_H * sc;
-    x = (TOP_W - w) / 2; y = (TOP_H - h) / 2;
+    x = (TOP_W - w) / 2; y = (224 - h) / 2;
     p3_draw_picture(VIEW_X, VIEW_Y, VIEW_W, VIEW_H, x - shift, y, w, h);
     /* a frame at the screen's depth, covering the picture's shifted edges */
     ui_rect(0, 0, x + 2, TOP_H, COL_BG);
@@ -537,12 +537,11 @@ static void draw_big_view(int eye, float iod)
 
 static void draw_title(void)
 {
-    ui_text_fit(TOP_W / 2, 70, 0.95f, COL_GOLD, C2D_AlignCenter, TOP_W - 30, UW3DS_TITLE);
-    ui_text_fit(TOP_W / 2, 110, 0.5f, COL_TEXT, C2D_AlignCenter, TOP_W - 30, "New 3DS edition");
-    ui_text(TOP_W / 2, 150, 0.42f, COL_DIM, C2D_AlignCenter | C2D_WordWrap, TOP_W - 60,
+    ui_header(TOP_W, UW3DS_TITLE, "New 3DS");
+    ui_text_fit(TOP_W / 2, 50, 0.95f, COL_GOLD, C2D_AlignCenter, TOP_W - 30, UW3DS_TITLE);
+    ui_text_fit(TOP_W / 2, 92, 0.5f, COL_TEXT, C2D_AlignCenter, TOP_W - 30, "New 3DS edition");
+    ui_text(TOP_W / 2, 128, 0.42f, COL_DIM, C2D_AlignCenter | C2D_WordWrap, TOP_W - 60,
             "Play the menus on the touch screen with the stylus. Once you are in the Abyss, the 3D view moves up here.");
-    /* kept above the toast box (TOP_H-26) and the "Paused" bar (TOP_H-14) so nothing overlaps */
-    ui_text_fit(TOP_W / 2, TOP_H - 42, 0.38f, COL_DIM, C2D_AlignCenter, TOP_W - 20, "START: port menu and manual");
 }
 
 /* "Working...": shown while the game saves or loads (uw_busy, set on its thread), so a long
@@ -552,7 +551,7 @@ static void busy_draw(void)
 {
     if (!uw_busy) return;
     {
-        float w = 150, x = (TOP_W - w) / 2, y = 8, ph = (float)(p3_frame() % 60) / 60.0f;
+        float w = 150, x = (TOP_W - w) / 2, y = 30, ph = (float)(p3_frame() % 60) / 60.0f;
         float seg = 50, sx = x + 2 + (w - 4 - seg) * (ph < 0.5f ? ph * 2 : (1 - ph) * 2);
         ui_frame(x, y, w, 24, COL_PANEL2, COL_GOLD);
         ui_text_fit(TOP_W / 2, y + 1, 0.42f, COL_TEXT, C2D_AlignCenter, w - 10, "Working...");
@@ -570,16 +569,12 @@ void front_draw_top(int eye, float iod)
     if (s->mode == SNAP_VIEW || s->mode == SNAP_CONV) draw_big_view(eye, iod);
     else if (s->in_game) map_draw(0, 0, TOP_W, TOP_H);     /* the game's own map is on the bottom */
     else draw_title();
-    if (toast_until && (int)(toast_until - p3_frame()) > 0) {
-        float w = ui_text_width(0.46f, toast) + 20;
-        if (w > TOP_W - 8) w = TOP_W - 8;
-        ui_frame((TOP_W - w) / 2, TOP_H - 26, w, 20, COL_PANEL2, COL_GOLD);
-        ui_text_fit(TOP_W / 2, TOP_H - 24, 0.46f, COL_TEXT, C2D_AlignCenter, w - 10, toast);
-    }
-    if (overlay && overlay != OV_MANUAL) {
-        ui_rect(0, TOP_H - 14, TOP_W, 14, COL_SHADE);
-        ui_text(TOP_W / 2, TOP_H - 14, 0.38f, COL_GOLD, C2D_AlignCenter, 0, "Paused: the port menu is open");
-    }
+    /* the hint strip: always there, same place in every port; toasts and the menu notice take
+       its place, opaque, drawn last */
+    if (toast_until && (int)(toast_until - p3_frame()) > 0) ui_hint(TOP_W, toast, 1);
+    else if (overlay && overlay != OV_MANUAL) ui_hint(TOP_W, "Port menu open    B: back    START: close", 0);
+    else if (s->in_game) ui_hint(TOP_W, "START menu    ZL swap screens    Circle Pad walk    C-Stick look", 0);
+    else ui_hint(TOP_W, "START menu    ZL swap screens", 0);
     busy_draw();
 }
 
@@ -610,30 +605,30 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
 static void menu_main(void)
 {
     const struct uwsnap *s = uw_snap();
-    ui_text(BOT_W / 2, 6, 0.6f, COL_GOLD, C2D_AlignCenter, 0, UW3DS_TITLE);
-    if (ui_button(10, 34, 145, 34, "Resume", 0)) { overlay = OV_NONE; p3_pause(0); }
-    if (ui_button(165, 34, 145, 34, "Manual", 0)) { overlay = OV_MANUAL; manual_open(0); }
-    if (ui_button_en(10, 74, 145, 34, "Quicksave", 0, s->in_game)) {
+    ui_header(BOT_W, UW3DS_TITLE, "MENU");
+    if (ui_button(8, 30, 148, 34, "RESUME", 0)) { overlay = OV_NONE; p3_pause(0); }
+    if (ui_button(164, 30, 148, 34, "MANUAL", 0)) { overlay = OV_MANUAL; manual_open(0); }
+    if (ui_button_en(8, 70, 148, 34, "QUICKSAVE", 0, s->in_game)) {
         overlay = OV_NONE; p3_pause(0);
         if (!uw_request_save(4, "Quicksave")) say("You cannot save just now.");
     }
-    if (ui_button_en(165, 74, 145, 34, "Quickload", 0, s->in_game)) {
+    if (ui_button_en(164, 70, 148, 34, "QUICKLOAD", 0, s->in_game)) {
         overlay = OV_NONE; p3_pause(0);
         if (!uw_request_restore(4)) say("You cannot restore just now.");
     }
-    if (ui_button_en(10, 114, 145, 34, "Spell hotkeys", 0, s->in_game)) { overlay = OV_HOTKEYS; pick_spell = -1; }
-    if (ui_button_en(165, 114, 145, 34, "Map", 0, s->in_game)) overlay = OV_MAP;
-    if (ui_button(10, 154, 145, 34, "Settings", 0)) { overlay = OV_NONE; p3_pause(0); p3_settings(1); }
-    if (ui_button(165, 154, 145, 34, "Exit game", 0)) overlay = OV_QUIT;
-    if (ui_button(10, 192, 145, 26, swap_ab ? "A/B: swapped" : "A/B: normal", swap_ab)) {
+    if (ui_button_en(8, 110, 148, 34, "SPELL HOTKEYS", 0, s->in_game)) { overlay = OV_HOTKEYS; pick_spell = -1; }
+    if (ui_button_en(164, 110, 148, 34, "MAP", 0, s->in_game)) overlay = OV_MAP;
+    if (ui_button(8, 150, 148, 34, "SETTINGS", 0)) { overlay = OV_NONE; p3_pause(0); p3_settings(1); }
+    if (ui_button(164, 150, 148, 34, "EXIT GAME", 0)) overlay = OV_QUIT;
+    if (ui_button(8, 190, 148, 28, swap_ab ? "A/B: SWAPPED" : "A/B: NORMAL", swap_ab)) {
         swap_ab = !swap_ab;
         opts_save();
     }
-    if (ui_button(165, 192, 145, 26, lefty ? "Left hand: on" : "Left hand: off", lefty)) {
+    if (ui_button(164, 190, 148, 28, lefty ? "LEFT HAND: ON" : "LEFT HAND: OFF", lefty)) {
         lefty = !lefty;
         opts_save();
     }
-    ui_text_fit(BOT_W / 2, 222, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "Quicksave and Quickload use the game's slot 4.");
+    ui_text_fit(BOT_W / 2, 223, 0.38f, COL_DIM, C2D_AlignCenter, BOT_W - 12, "Quicksave and Quickload use the game's slot 4.");
 }
 
 static void menu_hotkeys(void)
@@ -641,12 +636,12 @@ static void menu_hotkeys(void)
     const struct uwsnap *s = uw_snap();
     int n, i, row = 0, k;
     const struct uwspell *sp = uw_spells(&n);
-    ui_text(BOT_W / 2, 4, 0.5f, COL_GOLD, C2D_AlignCenter, 0, pick_spell < 0 ? "Choose a spell" : "Now choose a direction");
+    ui_header(BOT_W, pick_spell < 0 ? "Choose a spell" : "Now choose a direction", NULL);
     for (i = 0; i < n; i++) {
         float y;
         if (!spell_known(&sp[i], s->runes)) continue;
         if (row++ < pick_scroll) continue;
-        y = 26 + (row - 1 - pick_scroll) * 26;
+        y = 28 + (row - 1 - pick_scroll) * 26;
         if (y > 150) break;
         if (ui_button(6, y, 200, 24, sp[i].name, pick_spell == i)) pick_spell = i;
     }
@@ -665,14 +660,14 @@ static void menu_hotkeys(void)
     ui_text(212, 158, 0.36f, COL_DIM, C2D_WordWrap, 104, "Choose a direction alone to clear it.");
     for (k = 0; k < 4; k++)
         ui_textf(8, 162 + k * 13, 0.38f, COL_TEXT, "%-5s %s", dirs[k], hotkey[k] >= 0 && hotkey[k] < n ? sp[hotkey[k]].name : "-");
-    if (ui_button(230, 206, 84, 28, "Done", 0)) overlay = OV_MENU;
+    if (ui_button(230, 206, 84, 28, "DONE", 0)) overlay = OV_MENU;
 }
 
 static void menu_map(void)
 {
     int v = map_viewing();
     char b[48];
-    ui_text(BOT_W / 2, 6, 0.55f, COL_GOLD, C2D_AlignCenter, 0, "Map");
+    ui_header(BOT_W, "Map", NULL);
     if (ui_button(10, 40, 145, 34, "Zoom in", 0)) map_zoom(1);
     if (ui_button(165, 40, 145, 34, "Zoom out", 0)) map_zoom(-1);
     if (ui_button(10, 84, 145, 34, "Level up", 0)) map_level(-1);
@@ -681,26 +676,28 @@ static void menu_map(void)
     if (ui_button(10, 128, 300, 34, b, !v)) map_follow();
     snprintf(b, sizeof b, "%s: choose a button    %s: press it", lefty ? "A/B/X/Y" : "D-pad", front_key_name(CONFIRM_KEY));
     ui_text_fit(BOT_W / 2, 172, 0.4f, COL_DIM, C2D_AlignCenter, BOT_W - 12, b);
-    if (ui_button(230, 200, 84, 30, "Done", 0)) overlay = OV_MENU;
+    if (ui_button(230, 200, 84, 30, "DONE", 0)) overlay = OV_MENU;
 }
 
 static void menu_manual(void)
 {
     int i, n = manual_chapters();
-    ui_text(BOT_W / 2, 4, 0.5f, COL_GOLD, C2D_AlignCenter, 0, "Manual");
+    ui_header(BOT_W, "Manual", NULL);
     for (i = 0; i < n && i < 16; i++) {
-        float x = 6 + (i % 2) * 156, y = 24 + (i / 2) * 24;
+        float x = 6 + (i % 2) * 156, y = 26 + (i / 2) * 23;
         if (ui_button(x, y, 152, 22, manual_title(i), i == manual_current())) manual_open(i);
     }
-    if (ui_button(230, 214, 84, 24, "Close", 0)) overlay = OV_MENU;
+    if (ui_button(230, 213, 84, 24, "CLOSE", 0)) overlay = OV_MENU;
 }
 
 static void menu_quit(void)
 {
+    ui_header(BOT_W, "Exit game", NULL);
     ui_text(BOT_W / 2, 60, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "Leave the game?");
     ui_text(BOT_W / 2, 84, 0.42f, COL_DIM, C2D_AlignCenter, 0, "Anything not saved is lost.");
-    if (ui_button(20, 130, 130, 40, "Quit", 0)) p3_quit();
-    if (ui_button(170, 130, 130, 40, "Stay", 0)) overlay = OV_MENU;
+    /* NO is drawn first so the D-pad focus starts on it */
+    if (ui_button(170, 130, 130, 40, "NO", 0)) overlay = OV_MENU;
+    if (ui_button(20, 130, 130, 40, "YES", 0)) p3_quit();
 }
 
 int front_draw_bottom(void)
@@ -726,7 +723,7 @@ int front_draw_bottom(void)
         if (overlay != last_ov) { ui_nav_reset(); last_ov = overlay; }
     }
     ui_nav_frame(overlay != OV_MANUAL);
-    ui_rect(0, 0, BOT_W, BOT_H, C2D_Color32(18, 16, 14, 235));
+    ui_rect(0, 0, BOT_W, BOT_H, COL_BG);
     switch (overlay) {
     case OV_MENU: menu_main(); break;
     case OV_HOTKEYS: menu_hotkeys(); break;

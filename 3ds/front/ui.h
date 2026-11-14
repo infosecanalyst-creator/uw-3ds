@@ -9,15 +9,18 @@
 #define BOT_W 320
 #define BOT_H 240
 
-/* The dashboard's colours: dark stone, parchment, Britannian gold. */
-#define COL_BG       C2D_Color32(18, 16, 14, 255)
-#define COL_PANEL    C2D_Color32(38, 34, 30, 255)
-#define COL_PANEL2   C2D_Color32(54, 48, 42, 255)
-#define COL_EDGE     C2D_Color32(96, 84, 66, 255)
-#define COL_TEXT     C2D_Color32(226, 214, 188, 255)
-#define COL_DIM      C2D_Color32(150, 140, 120, 255)
-#define COL_GOLD     C2D_Color32(232, 190, 92, 255)
-#define COL_RED      C2D_Color32(200, 54, 44, 255)
+/* The house palette shared by all of Ryan's 3DS ports (claude/3ds-look-and-feel.md). */
+#define COL_BG       C2D_Color32(8, 12, 40, 255)
+#define COL_PANEL    C2D_Color32(40, 56, 120, 255)
+#define COL_PANEL2   C2D_Color32(56, 76, 150, 255)
+#define COL_EDGE     C2D_Color32(120, 150, 230, 255)
+#define COL_PRESS    C2D_Color32(220, 180, 60, 255)
+#define COL_SHADOW   C2D_Color32(20, 30, 70, 255)
+#define COL_TEXT     C2D_Color32(240, 240, 240, 255)
+#define COL_DIM      C2D_Color32(150, 150, 165, 255)
+#define COL_GOLD     C2D_Color32(255, 204, 64, 255)
+#define COL_HINTBG   C2D_Color32(4, 6, 20, 255)
+#define COL_RED      C2D_Color32(255, 80, 64, 255)
 #define COL_BLUE     C2D_Color32(70, 110, 220, 255)
 #define COL_GREEN    C2D_Color32(90, 180, 80, 255)
 #define COL_POISON   C2D_Color32(120, 200, 60, 255)
@@ -36,6 +39,10 @@ float ui_text_fit(float x, float y, float size, u32 col, int flags, float maxw, 
 void ui_rect(float x, float y, float w, float h, u32 col);
 void ui_frame(float x, float y, float w, float h, u32 fill, u32 edge);
 void ui_bar(float x, float y, float w, float h, float frac, u32 col, const char *label);
+/* House layout pieces: the 22 px header bar (title in gold at x 8, optional status on the
+   right) and the 16 px hint strip at y 224 (what the buttons do now; also where toasts go). */
+void ui_header(float w, const char *title, const char *status);
+void ui_hint(float w, const char *text, int toast);
 /* A button on the bottom screen; 1 when the touch released inside it this frame. */
 int ui_button(float x, float y, float w, float h, const char *label, int lit);
 /* Buttons without the stylus (see ui.c): ui_nav_frame(on) before a screen's buttons are drawn,

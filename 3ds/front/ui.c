@@ -92,8 +92,8 @@ void ui_touch(int touching, int x, int y)
 int ui_button_en(float x, float y, float w, float h, const char *label, int lit, int enabled)
 {
     if (!enabled) {
-        ui_frame(x, y, w, h, COL_BG, COL_PANEL2);
-        ui_text_fit(x + w / 2, y + (h - 16) / 2, 0.5f, C2D_Color32(96, 90, 80, 255), C2D_AlignCenter, w - 6, label);
+        ui_frame(x, y, w, h, COL_BG, COL_SHADOW);
+        ui_text_fit(x + w / 2, y + (h - 16) / 2, 0.5f, C2D_Color32(80, 84, 110, 255), C2D_AlignCenter, w - 6, label);
         return 0;
     }
     return ui_button(x, y, w, h, label, lit);
@@ -156,8 +156,11 @@ int ui_button(float x, float y, float w, float h, const char *label, int lit)
         ui_rect(x - 3, y - 3, w + 6, 2, COL_GOLD); ui_rect(x - 3, y + h + 1, w + 6, 2, COL_GOLD);
         ui_rect(x - 3, y - 1, 2, h + 2, COL_GOLD); ui_rect(x + w + 1, y - 1, 2, h + 2, COL_GOLD);
     }
-    ui_frame(x, y, w, h, pressed ? COL_EDGE : (lit || focused) ? COL_PANEL2 : COL_PANEL, (lit || focused) ? COL_GOLD : COL_EDGE);
-    ui_text_fit(x + w / 2, y + (h - 16) / 2, 0.5f, (lit || focused) ? COL_GOLD : COL_TEXT, C2D_AlignCenter, w - 6, label);
+    /* house button: face, 1 px edge, a shadow line on the bottom edge; pressed turns the face
+       gold and sinks the label 1 px; lit (an option that is on) gets a gold edge and label */
+    ui_frame(x, y, w, h, pressed ? COL_PRESS : lit ? COL_PANEL2 : COL_PANEL, lit ? COL_GOLD : COL_EDGE);
+    if (!pressed) ui_rect(x + 1, y + h - 2, w - 2, 1, COL_SHADOW);
+    ui_text_fit(x + w / 2, y + (h - 16) / 2 + (pressed ? 1 : 0), 0.5f, pressed ? COL_BG : lit ? COL_GOLD : COL_TEXT, C2D_AlignCenter, w - 6, label);
     if (focused && nav_fire) { nav_fire = 0; return 1; }
     return !t_now && t_was && in && in0;
 }
@@ -167,4 +170,19 @@ float ui_text_fit(float x, float y, float size, u32 col, int flags, float maxw, 
     float sz = size;
     while (sz > 0.28f && ui_text_width(sz, s) > maxw) sz *= 0.94f;
     return ui_text(x, y + (size - sz) * 15.0f, sz, col, flags & ~C2D_WordWrap, 0, s);
+}
+
+void ui_header(float w, const char *title, const char *status)
+{
+    ui_rect(0, 0, w, 22, COL_PANEL);
+    ui_rect(0, 22, w, 1, COL_EDGE);
+    ui_text_fit(8, 3, 0.5f, COL_GOLD, 0, status ? w * 0.6f : w - 16, title);
+    if (status) ui_text_fit(w - 8, 5, 0.42f, COL_TEXT, C2D_AlignRight, w * 0.38f, status);
+}
+
+void ui_hint(float w, const char *text, int toast)
+{
+    ui_rect(0, 224, w, 16, toast ? COL_PANEL : COL_HINTBG);
+    if (toast) ui_rect(0, 224, w, 1, COL_GOLD);
+    ui_text_fit(w / 2, 225, 0.4f, toast ? COL_TEXT : COL_GOLD, C2D_AlignCenter, w - 8, text);
 }
