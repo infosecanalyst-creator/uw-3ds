@@ -415,7 +415,7 @@ static void draw_status(void)
     for (i = 0; i < 20; i++) {
         float x = 8 + (i / 7) * 104, yy = y + (i % 7) * 11;
         snprintf(b, sizeof b, "%s %d", uw_skill_name(i), s->skills[i]);
-        ui_text_fit(x, yy, 0.36f, s->skills[i] ? COL_TEXT : COL_DIM, 0, 100, b);
+        ui_text_fit(x, yy, 0.38f, s->skills[i] ? COL_TEXT : COL_DIM, 0, 100, b);
     }
 }
 
@@ -471,7 +471,7 @@ static void draw_journal(void)
     ui_rect(0, 0, PG_W, 16, COL_PANEL2);
     ui_text_fit(8, 1, 0.42f, COL_GOLD, 0, PG_W - 120, uw_journal_name(p));
     snprintf(b, sizeof b, "%d of %d  SELECT+L/R", p + 1, uw_journal_people());
-    ui_text_fit(PG_W - 6, 2, 0.34f, COL_DIM, C2D_AlignRight, 108, b);
+    ui_text_fit(PG_W - 6, 2, 0.38f, COL_DIM, C2D_AlignRight, 108, b);
     uw_log_unlock();
 }
 
@@ -657,7 +657,7 @@ static void menu_hotkeys(void)
             else { hotkey[k] = -1; opts_save(); }
         }
     }
-    ui_text(212, 158, 0.36f, COL_DIM, C2D_WordWrap, 104, "Choose a direction alone to clear it.");
+    ui_text(212, 158, 0.38f, COL_DIM, C2D_WordWrap, 104, "Choose a direction alone to clear it.");
     for (k = 0; k < 4; k++)
         ui_textf(8, 162 + k * 13, 0.38f, COL_TEXT, "%-5s %s", dirs[k], hotkey[k] >= 0 && hotkey[k] < n ? sp[hotkey[k]].name : "-");
     if (ui_button(230, 206, 84, 28, "DONE", 0)) overlay = OV_MENU;

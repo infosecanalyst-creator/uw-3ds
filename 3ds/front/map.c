@@ -147,7 +147,7 @@ void map_draw(float rx, float ry, float rw, float rh)
         float nx = cx + (notes[i].x - px) * sc, ny = cy - (notes[i].y - py) * sc;
         if (nx < rx + 3 || nx > rx + rw - 3 || ny < ry + 3 || ny > ry + rh - 3) continue;
         C2D_DrawCircleSolid(nx, ny, 0.5f, 3, COL_GOLD);
-        if (sc >= 9) ui_text(nx + 5, ny - 6, 0.36f, COL_GOLD, 0, 0, notes[i].text);
+        if (sc >= 9) ui_text(nx + 5, ny - 6, 0.38f, COL_GOLD, 0, 0, notes[i].text);
     }
     /* you: an arrow turned to your heading (0 north, clockwise) */
     if (!view_level) {

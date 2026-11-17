@@ -169,8 +169,23 @@ int ui_button(float x, float y, float w, float h, const char *label, int lit)
 
 float ui_text_fit(float x, float y, float size, u32 col, int flags, float maxw, const char *s)
 {
+    /* shrink a little, never below 0.38 (the readability floor, Ryan Nov 17 2026: "everything has
+       to be readable"); text that still doesn't fit ends in "..." instead of shrinking further */
     float sz = size;
-    while (sz > 0.28f && ui_text_width(sz, s) > maxw) sz *= 0.94f;
+    char buf[256];
+    size_t n;
+    while (sz > 0.38f && ui_text_width(sz, s) > maxw) sz *= 0.96f;
+    if (sz < 0.38f) sz = 0.38f;
+    if (maxw > 0 && ui_text_width(sz, s) > maxw && (n = strlen(s)) < sizeof buf - 4) {
+        memcpy(buf, s, n + 1);
+        while (n > 1) {
+            n--;
+            while (n > 1 && (buf[n] & 0xC0) == 0x80) n--;   /* stay on a UTF-8 character boundary */
+            memcpy(buf + n, "...", 4);
+            if (ui_text_width(sz, buf) <= maxw) break;
+        }
+        s = buf;
+    }
     return ui_text(x, y + (size - sz) * 15.0f, sz, col, flags & ~C2D_WordWrap, 0, s);
 }
 
