@@ -521,7 +521,7 @@ static void draw_tabs(void)
    the screen's frame by the 3D slider. */
 static void draw_big_view(int eye, float iod)
 {
-    float sc = 392.0f / VIEW_W, w, h, x, y, shift = (eye ? 1 : -1) * iod * 7.0f;
+    float sc = (TOP_W - 8.0f) / VIEW_W, w, h, x, y, shift = (eye ? 1 : -1) * iod * 7.0f;
     if (216.0f / VIEW_H < sc) sc = 216.0f / VIEW_H;   /* clear of the hint strip at y 224 */
     w = VIEW_W * sc; h = VIEW_H * sc;
     x = (TOP_W - w) / 2; y = (224 - h) / 2;
@@ -572,8 +572,8 @@ void front_draw_top(int eye, float iod)
     /* the hint strip: always there, same place in every port; toasts and the menu notice take
        its place, opaque, drawn last */
     if (toast_until && (int)(toast_until - p3_frame()) > 0) ui_hint(TOP_W, toast, 1);
-    else if (overlay && overlay != OV_MANUAL) ui_hint(TOP_W, "Port menu open    B: back    START: close", 0);
-    else if (s->in_game) ui_hint(TOP_W, "START menu    ZL swap screens    Circle Pad walk    C-Stick look", 0);
+    else if (overlay && overlay != OV_MANUAL) ui_hint(TOP_W, TOP_W < 400 ? "Port menu   B: back   START: close" : "Port menu open    B: back    START: close", 0);
+    else if (s->in_game) ui_hint(TOP_W, TOP_W < 400 ? "START menu  ZL swap  Pad walk  C-Stick look" : "START menu    ZL swap screens    Circle Pad walk    C-Stick look", 0);
     else ui_hint(TOP_W, "START menu    ZL swap screens", 0);
     busy_draw();
 }

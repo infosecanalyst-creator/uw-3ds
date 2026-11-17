@@ -4,7 +4,10 @@
 #define UW3DS_UI_H
 #include <citro2d.h>
 
-#define TOP_W 400
+/* The dashboard's layout width: 400 on the top screen, 320 when ZL puts it on the touch screen
+   (laid out again at full size, never scaled: swap readability rule, Ryan Nov 10/17 2026). */
+extern int ui_top_w;
+#define TOP_W ui_top_w
 #define TOP_H 240
 #define BOT_W 320
 #define BOT_H 240

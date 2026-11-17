@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 #include "plat.h"
 #include "plat3ds.h"
+extern int ui_top_w;   /* front/ui.c: dashboard layout width */
 #include "ui/settings.h"
 u32 front_remap(u32 keys);   /* front.c: left-handed play */
 
@@ -672,7 +673,7 @@ static void draw(void)
     if (swapped) {
         /* top: the game picture filling the whole screen (the touchscreen can't reach it, so the
            tabs are left off); with the port menu or the settings open, that layer centred at 1:1
-           so its buttons read as drawn. bottom: the dashboard at 0.8 so it all fits */
+           so its buttons read as drawn. bottom: the dashboard laid out again at 320 px (full-size text) */
         int eye, fill = !sopen && !front_menu_open();
         for (eye = 0; eye < (iod > 0.0f ? 2 : 1); eye++) {
             top_begin(eye);
@@ -686,9 +687,9 @@ static void draw(void)
         }
         C2D_TargetClear(bot, C2D_Color32(0, 0, 0, 255));
         C2D_SceneBegin(bot);
-        C2D_ViewTranslate(0.0f, 24.0f);
-        C2D_ViewScale(0.8f, 0.8f);
+        ui_top_w = 320;                 /* laid out again for 320 px at full size, not scaled */
         front_draw_top(0, 0.0f);
+        ui_top_w = 400;
         C2D_ViewReset();
         C3D_FrameEnd(0);
         return;

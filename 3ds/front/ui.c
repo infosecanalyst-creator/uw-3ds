@@ -4,6 +4,8 @@
 #include <string.h>
 #include "ui.h"
 
+int ui_top_w = 400;
+
 static C2D_TextBuf tb;
 float ui_eye_shift;
 
