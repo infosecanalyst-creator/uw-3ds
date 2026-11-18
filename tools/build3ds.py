@@ -150,7 +150,7 @@ def main():
     specs = os.path.join(DKP, 'devkitARM', 'arm-none-eabi', 'lib', '3dsx.specs')
     # Hardware test hooks (3ds-test-suite hwtest/selftest, 3ds/platform/selftest.c): inactive unless the
     # test agent starts the game with --selftest=<script>.
-    wraps = ['-Wl,--wrap=' + f for f in 'hidScanInput hidKeysHeld hidKeysDown hidKeysDownRepeat hidKeysUp hidTouchRead hidCircleRead irrstCstickRead aptMainLoop'.split()]
+    wraps = ['-Wl,--wrap=' + f for f in 'hidScanInput hidKeysHeld hidKeysDown hidKeysDownRepeat hidKeysUp hidTouchRead hidCircleRead irrstCstickRead aptMainLoop swkbdInputText'.split()]
     link = [CC, '-specs=3dsx.specs', '-g', '-O2'] + ARCH + LTO + wraps + ['-Wl,--gc-sections', '-Wl,-Map,' + elf + '.map', '-o', elf] + objs + \
         ['-L', os.path.join(CTRU, 'lib'), '-L', os.path.join(PORTLIBS, 'lib'), '-lcitro2d', '-lcitro3d', '-lctru', '-lm']
     rc, e = run(link, TOP)

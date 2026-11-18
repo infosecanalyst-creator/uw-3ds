@@ -407,6 +407,19 @@ void __wrap_hidScanInput(void) {
 bool __wrap_aptMainLoop(void) {   // the watchdog ends the game after the script; no quit request
     return __real_aptMainLoop();
 }
+// The system keyboard is its own applet: a script can't type into it, and the game
+// draws no frames while it is open (the watchdog then sees a hang). In a scripted run
+// it answers at once with a fixed test name (UW's character name, Nov 18).
+SwkbdButton __real_swkbdInputText(SwkbdState* swkbd, char* buf, size_t bufsize);
+SwkbdButton __wrap_swkbdInputText(SwkbdState* swkbd, char* buf, size_t bufsize) {
+    if (st_on == 1 && buf && bufsize > 0) {
+        snprintf(buf, bufsize, "%s", "Tester");
+        st_logf("swkbd: answered \"%s\"\n", buf);
+        return SWKBD_BUTTON_CONFIRM;
+    }
+    return __real_swkbdInputText(swkbd, buf, bufsize);
+}
+
 u32 __wrap_hidKeysHeld(void) { return st_on == 1 ? st_held : __real_hidKeysHeld(); }
 u32 __wrap_hidKeysDown(void) { return st_on == 1 ? (st_held & ~st_prev) : __real_hidKeysDown(); }
 u32 __wrap_hidKeysDownRepeat(void) { return st_on == 1 ? (st_held & ~st_prev) : __real_hidKeysDownRepeat(); }
