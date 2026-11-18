@@ -336,8 +336,12 @@ static void st_init(void) {
     // The writer runs on the New 3DS's extra core (2), so a busy game or sound
     // thread on the game's core can never starve it (it stalled in Gold Box
     // once the demo's sound started). Old 3DS: the game's core, as before.
+    // Underworld runs its game thread on core 2 at prio + 1, so the writer sits one
+    // step above it (prio): it sleeps on st_jobEvent between shots and only takes the
+    // core for the few ms each file write needs (at prio + 2 it never ran once the
+    // game got busy: "4 files never written", Nov 18).
     st_writerCore = 2;
-    if (!threadCreate(st_writer, NULL, 32 * 1024, prio + 2, 2, true)) {
+    if (!threadCreate(st_writer, NULL, 32 * 1024, prio, 2, true)) {
         st_writerCore = -2;
         threadCreate(st_writer, NULL, 32 * 1024, prio + 2, -2, true);
     }
