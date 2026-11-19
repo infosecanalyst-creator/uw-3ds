@@ -624,6 +624,20 @@ static void game_input(u32 down, u32 held_k, u32 up, circlePosition cp, circlePo
 }
 
 static int swapped;                 /* ZL: the game on the top screen, the dashboard on the touchscreen */
+/* Rule 16 (remember the setup): the swap is kept in a marker file next to the settings. */
+#define SWAP_FILE UW3DS_HOME "/.swapped"
+static int swap_loaded;
+static void swap_load(void)
+{
+    struct stat sb;
+    if (swap_loaded) return;
+    swapped = stat(SWAP_FILE, &sb) == 0; swap_loaded = 1;
+}
+static void swap_save(void)
+{
+    if (swapped) { FILE *f = fopen(SWAP_FILE, "w"); if (f) fclose(f); }
+    else remove(SWAP_FILE);
+}
 static C3D_RenderTarget *top_w;     /* the top screen at 800x240 (wide mode) */
 static int wide_on;
 
@@ -783,7 +797,8 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         hidCstickRead(&cs);
         touching = (held_k & KEY_TOUCH) != 0;
         hidTouchRead(&t);
-        if (down & KEY_ZL) swapped = !swapped;          /* ZL swaps the screens at any time */
+        swap_load();
+        if (down & KEY_ZL) { swapped = !swapped; swap_save(); }   /* ZL swaps the screens at any time */
         down &= ~KEY_ZL; held_k &= ~KEY_ZL; up &= ~KEY_ZL;
         if (swapped && !settings_open()) {
             /* the touchscreen is a touchpad for the game on the top screen (or, with the port
