@@ -99,6 +99,8 @@ int uw_request_save(int slot, const char *desc)
     return 1;
 }
 
+int uw_request_pending(void) { return req != 0; }
+
 int uw_request_restore(int slot)
 {
     if (req || !safe) return 0;

@@ -690,14 +690,30 @@ static void menu_manual(void)
     if (ui_button(230, 213, 84, 24, "CLOSE", 0)) overlay = OV_MENU;
 }
 
+/* Rule 17 (never lose progress): leaving from the game quicksaves first (slot 4, the one
+   QUICKLOAD and the title's load list use). The save runs on the game's thread, so the
+   quit waits for it, up to 10 s. */
+static int quit_saving;
+static u64 quit_t0;
 static void menu_quit(void)
 {
+    const struct uwsnap *s = uw_snap();
     ui_header(BOT_W, "Exit game", NULL);
+    if (quit_saving) {
+        ui_text(BOT_W / 2, 90, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "Saving...");
+        if ((!uw_request_pending() && !uw_busy && osGetTime() - quit_t0 > 300) || osGetTime() - quit_t0 > 10000)
+            p3_quit();
+        return;
+    }
     ui_text(BOT_W / 2, 60, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "Leave the game?");
-    ui_text(BOT_W / 2, 84, 0.42f, COL_DIM, C2D_AlignCenter, 0, "Anything not saved is lost.");
+    ui_text(BOT_W / 2, 84, 0.42f, COL_DIM, C2D_AlignCenter, 0,
+            s->in_game ? "The game is quicksaved first." : "Anything not saved is lost.");
     /* NO is drawn first so the D-pad focus starts on it */
     if (ui_button(170, 130, 130, 40, "NO", 0)) overlay = OV_MENU;
-    if (ui_button(20, 130, 130, 40, "YES", 0)) p3_quit();
+    if (ui_button(20, 130, 130, 40, "YES", 0)) {
+        if (s->in_game && uw_request_save(4, "Quicksave")) { quit_saving = 1; quit_t0 = osGetTime(); p3_pause(0); }
+        else p3_quit();
+    }
 }
 
 int front_draw_bottom(void)

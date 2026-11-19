@@ -61,6 +61,7 @@ int uw_journal_latest(void);            /* the person spoken to last, or -1 */
 
 /* Requests run on the game's thread at its next safe point: 1 if taken. */
 int uw_request_save(int slot, const char *desc);
+int uw_request_pending(void);          /* a save/restore request not yet taken by the game */
 int uw_request_restore(int slot);
 const char *uw_request_result(void);    /* the last request's outcome, for a message; NULL none */
 int uw_can_save(void);
