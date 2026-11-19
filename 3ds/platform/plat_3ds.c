@@ -649,7 +649,10 @@ static void top_begin(int eye)
     C2D_TargetClear(tg, C2D_Color32(0, 0, 0, 255));
     C2D_SceneBegin(tg);
     C2D_ViewReset();
-    if (wide_on) C2D_ViewScale(2.0f, 1.0f);
+    /* no 2x scale here for the 800-wide target: citro2d already gives an 800x240 top target
+       its 400x240 projection (C2D_SceneSize treats GSP_SCREEN_HEIGHT_TOP_2X like 400), so the
+       400-wide layout fills it by itself. Scaling again drew everything 4x wide (title, dashboard
+       and the 3D view ran off the right edge with the 3D slider down; seen on hardware Nov 18). */
 }
 
 /* the game screen (the picture and the front end's overlay), 320x240, at the screen's origin */
