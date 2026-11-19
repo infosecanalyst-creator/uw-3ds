@@ -10,6 +10,9 @@ static C2D_TextBuf tb;
 float ui_eye_shift;
 
 static int t_now, t_was, t_x, t_y, t_x0, t_y0;
+/* drag to scroll (rule 13): while a page that scrolls is open, a touch that moves more than
+   6 px is a drag, not a tap, so no button fires for it */
+static int drag_on, t_drag, t_ylast, t_dy;
 
 void ui_init(void)
 {
@@ -86,10 +89,18 @@ void ui_touch(int touching, int x, int y)
     t_was = t_now;
     t_now = touching;
     if (touching) {
-        if (!t_was) { t_x0 = x; t_y0 = y; }
+        if (!t_was) { t_x0 = x; t_y0 = y; t_ylast = y; t_drag = 0; }
         t_x = x; t_y = y;
-    }
+        t_dy = y - t_ylast;
+        t_ylast = y;
+        if (drag_on && (x - t_x0 > 6 || t_x0 - x > 6 || y - t_y0 > 6 || t_y0 - y > 6)) t_drag = 1;
+    } else
+        t_dy = 0;
 }
+
+void ui_drag_scroll(int on) { drag_on = on; if (!on) t_drag = 0; }
+int ui_dragging(void) { return t_now && t_drag; }
+int ui_drag_dy(void) { return t_now && t_drag ? t_dy : 0; }
 
 int ui_button_en(float x, float y, float w, float h, const char *label, int lit, int enabled)
 {
@@ -152,7 +163,7 @@ int ui_button(float x, float y, float w, float h, const char *label, int lit)
     int in0 = t_x0 >= x && t_x0 < x + w && t_y0 >= y && t_y0 < y + h;
     int idx = nav_n < NAV_MAX ? nav_n++ : -1;
     int focused = nav_on && idx == nav_focus;
-    int pressed = (t_now && in && in0) || (focused && nav_flash);
+    int pressed = (t_now && in && in0 && !t_drag) || (focused && nav_flash);
     if (idx >= 0) { nav_r[idx][0] = x; nav_r[idx][1] = y; nav_r[idx][2] = w; nav_r[idx][3] = h; }
     if (focused) {                                  /* a second gold ring outside: the highlight */
         ui_rect(x - 3, y - 3, w + 6, 2, COL_GOLD); ui_rect(x - 3, y + h + 1, w + 6, 2, COL_GOLD);
@@ -164,7 +175,7 @@ int ui_button(float x, float y, float w, float h, const char *label, int lit)
     if (!pressed) ui_rect(x + 1, y + h - 2, w - 2, 1, COL_SHADOW);
     ui_text_fit(x + w / 2, y + (h - 16) / 2 + (pressed ? 1 : 0), 0.5f, pressed ? COL_BG : lit ? COL_GOLD : COL_TEXT, C2D_AlignCenter, w - 6, label);
     if (focused && nav_fire) { nav_fire = 0; return 1; }
-    return !t_now && t_was && in && in0;
+    return !t_now && t_was && in && in0 && !t_drag;
 }
 
 float ui_text_fit(float x, float y, float size, u32 col, int flags, float maxw, const char *s)

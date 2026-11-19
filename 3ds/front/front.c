@@ -285,6 +285,7 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
     int mine;
     if (r) say(r);
     seq_run();
+    ui_drag_scroll(overlay == OV_MANUAL);
     ui_touch(touching, t.px, t.py);
     if (overlay) { was_touching = touching; touch_mine = 0; return menu_input(down, held, cp, cs, touching, t); }
     /* a touch belongs to the front end (the tabs, a page) or to the game, by where it started */

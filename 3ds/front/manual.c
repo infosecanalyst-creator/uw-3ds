@@ -76,6 +76,13 @@ void manual_input(u32 down, u32 held, circlePosition cp, circlePosition cs)
     if (to != cur && to >= 0 && to < nch) { cur = to; scroll = 0; }
     if (cp.dy < -40 || cs.dy < -40) scroll += (cp.dy < -110 || cs.dy < -110) ? 6 : 3;
     if (cp.dy > 40 || cs.dy > 40) scroll -= (cp.dy > 110 || cs.dy > 110) ? 6 : 3;
+    /* drag the stylus on the touch screen to scroll, with a little momentum (rule 13) */
+    {
+        static float mom;
+        if (ui_dragging()) { scroll -= ui_drag_dy(); mom = (float)-ui_drag_dy(); }
+        else if (mom > 0.5f || mom < -0.5f) { scroll += (int)mom; mom *= 0.88f; }
+        else mom = 0;
+    }
     if (scroll < 0) scroll = 0;
 }
 

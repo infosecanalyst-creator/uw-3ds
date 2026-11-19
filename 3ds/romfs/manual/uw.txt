@@ -7,7 +7,7 @@ The bottom screen is the whole game screen. Play it with the stylus exactly as y
 
 Under the game is a row of tabs: Game, Map, Status, Log, Journal and Spells. The other tabs show a dashboard page on the bottom screen in place of the game; tap Game (or press SELECT) to go back. START opens the port menu.
 
-In this manual: the Circle Pad or C-stick scrolls, the D-pad moves between the sections on the bottom screen, L and R go to the previous or next section, and B or START closes it.
+In this manual: the Circle Pad or C-stick scrolls (or drag the stylus up and down on the touch screen), the D-pad moves between the sections on the bottom screen, L and R go to the previous or next section, and B or START closes it.
 
 # Buttons
 Circle Pad: walk forward (push all the way to run) and back, and step sideways (strafe) left and right.

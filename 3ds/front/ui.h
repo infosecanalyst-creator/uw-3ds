@@ -56,6 +56,9 @@ void ui_nav_reset(void);
 /* The same, but ENABLED 0 draws it greyed out: no press look, no click, always returns 0. */
 int ui_button_en(float x, float y, float w, float h, const char *label, int lit, int enabled);
 void ui_touch(int touching, int x, int y);     /* the frame's touch, for ui_button */
+void ui_drag_scroll(int on);  /* a scrolling page is open: moves over 6 px are drags, not taps */
+int ui_dragging(void);        /* the stylus is down and dragging */
+int ui_drag_dy(void);         /* this frame's vertical drag in px (0 when not dragging) */
 /* The stereo offset for the current eye: things drawn at depth D (0 the screen, positive
    in front of it) move by this times D. */
 extern float ui_eye_shift;
