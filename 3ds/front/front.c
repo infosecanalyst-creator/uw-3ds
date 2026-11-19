@@ -285,7 +285,8 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
     int mine;
     if (r) say(r);
     seq_run();
-    ui_drag_scroll(overlay == OV_MANUAL);
+    /* rule 13: the manual, and the Log, Journal and Spells pages, scroll by dragging */
+    ui_drag_scroll(overlay == OV_MANUAL || (!overlay && (tab == TAB_LOG || tab == TAB_JOURNAL || tab == TAB_SPELLS)));
     ui_touch(touching, t.px, t.py);
     if (overlay) { was_touching = touching; touch_mine = 0; return menu_input(down, held, cp, cs, touching, t); }
     /* a touch belongs to the front end (the tabs, a page) or to the game, by where it started */
@@ -295,6 +296,19 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
     }
     mine = (touching || was_touching) && touch_mine;
     was_touching = touching;
+    {   /* drag a page: the text follows the stylus, one entry or row per 14 px, with a little momentum */
+        static int acc;
+        static float mom;
+        int dy = 0;
+        if (mine && ui_dragging()) { dy = ui_drag_dy(); mom = (float)dy; }
+        else if (!touching && (mom > 0.5f || mom < -0.5f)) { dy = (int)mom; mom *= 0.88f; }
+        else { mom = 0; acc = 0; }
+        if (dy && tab != TAB_GAME && tab != TAB_MAP) {
+            acc += tab == TAB_SPELLS ? -dy : dy;   /* Log/Journal: newest at the bottom, so down = older */
+            while (acc >= 14) { tab_scroll(1, 0); acc -= 14; }
+            while (acc <= -14) { tab_scroll(-1, 0); acc += 14; }
+        }
+    }
     if (touching && !mine) moved_since_touch = 0;
     if (down & KEY_START) { open_menu(OV_MENU); return 1; }
     /* SELECT: alone, the next page; held, the sticks and L R work the page */
