@@ -10,6 +10,10 @@ void uwglue_set_spells(const struct uwspell *tab, int n);
 void uwglue_set_safe(int safe);
 int uwglue_take_request(int *slot);         /* 0 none, 1 save, 2 restore */
 void uwglue_result(const char *msg);
+/* UW-01: the quicksave is written into a scratch slot, then swapped in: SAVE<to> becomes
+   SAVE<to>.BAK (the older .BAK is removed) and SAVE<from> becomes SAVE<to>. 0 on success. */
+int uwglue_swap_slot(int from, int to);
+extern volatile int uw_last_save_ok;   /* the last quicksave reached the card (game thread sets it) */
 /* The text scroll_print printed (MODE: 0 the message scroll, 1 the NPC's, 2 the player's),
    and in a conversation its id, the NPC's whoami and item (else -1). */
 void uwglue_scroll(const char *s, int mode, int conv, int whoami, int item);

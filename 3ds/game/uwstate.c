@@ -142,10 +142,21 @@ static void run_request(void)
     }
     uw_busy = 1;
     if (r == 1) {
+        /* UW-01: SaveGame empties its slot before copying into it, so it writes into a scratch
+           slot (5) and the port swaps that in only when it is complete; the slot it replaces
+           stays as SAVE4.BAK. A power cut mid-save never touches the last good quicksave. */
+        char desc[40] = "Quicksave";
+        int ok;
         port_quicksave_desc = "Quicksave";
-        DoSaveRest(0, slot);
+        ok = SaveGame(5, desc) && uwglue_swap_slot(5, slot) == 0;
         port_quicksave_desc = 0;
-        uwglue_result("Quicksaved.");
+#ifdef GAME_UW2
+        game_sprint(ok ? 0xAE + 5 : 0xAE + 4);   /* as UW2's DoSaveRest */
+#else
+        game_sprint(ok ? 0xA5 : 0xA4);           /* the game's own "saved" / "save failed" line */
+#endif
+        uw_last_save_ok = ok;
+        uwglue_result(ok ? "Quicksaved." : "Quicksave FAILED - is the SD card full?");
     } else {
         DoSaveRest(1, slot);
         RightButtonThing = IMODE_DEFAULT;

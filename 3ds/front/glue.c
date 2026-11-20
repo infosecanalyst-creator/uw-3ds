@@ -433,3 +433,48 @@ int uw_text_wanted(char *prompt, int psz, int *maxlen, int *digits)
     unlock();
     return 1;
 }
+
+/* ---- crash-safe quicksave (UW-01) ---- */
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+volatile int uw_last_save_ok;
+
+static void rm_tree(const char *path)
+{
+    DIR *d = opendir(path);
+    if (d) {
+        struct dirent *e;
+        char sub[512];
+        while ((e = readdir(d))) {
+            if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
+            snprintf(sub, sizeof sub, "%s/%s", path, e->d_name);
+            struct stat st;
+            if (stat(sub, &st) == 0 && S_ISDIR(st.st_mode)) rm_tree(sub);
+            else remove(sub);
+        }
+        closedir(d);
+        rmdir(path);
+    } else
+        remove(path);
+}
+
+int uwglue_swap_slot(int from, int to)
+{
+    char dfrom[8], dto[8], pfrom[512], pto[512], pbak[520];
+    struct stat st;
+    snprintf(dfrom, sizeof dfrom, "SAVE%d", from);
+    snprintf(dto, sizeof dto, "SAVE%d", to);
+    if (plat_resolve(dfrom, PLAT_READ, pfrom, sizeof pfrom) || stat(pfrom, &st) != 0) return -1;
+    if (plat_resolve(dto, PLAT_READ, pto, sizeof pto)) return -1;
+    snprintf(pbak, sizeof pbak, "%s.BAK", pto);
+    if (stat(pto, &st) == 0) {
+        rm_tree(pbak);                         /* the save before last */
+        if (rename(pto, pbak) != 0) return -1; /* the last good save stays as SAVEn.BAK */
+    }
+    if (rename(pfrom, pto) != 0) {
+        rename(pbak, pto);                     /* put the last good save back */
+        return -1;
+    }
+    return 0;
+}

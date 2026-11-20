@@ -24,6 +24,7 @@
 #include "ui.h"
 #include "uwsnap.h"
 #include "front.h"
+#include "uwglue.h"
 #include "strings3ds.h"
 
 enum { TAB_GAME, TAB_MAP, TAB_STATUS, TAB_LOG, TAB_JOURNAL, TAB_SPELLS, TABS };
@@ -706,18 +707,33 @@ static void menu_manual(void)
 }
 
 /* Rule 17 (never lose progress): leaving from the game quicksaves first (slot 4, the one
-   QUICKLOAD and the title's load list use). The save runs on the game's thread, so the
-   quit waits for it, up to 10 s. */
-static int quit_saving;
+   QUICKLOAD and the title's load list use). The save runs on the game's thread; the quit
+   waits for it to finish (UW-02: never quit or park mid-save), and when the save could not
+   be made or failed it asks first (UW-03, UW-04). */
+static int quit_state;                 /* 0 asking, 1 saving, 2 not saved: exit anyway? */
+static const char *quit_why;
 static u64 quit_t0;
 static void menu_quit(void)
 {
     const struct uwsnap *s = uw_snap();
     ui_header(BOT_W, "Exit game", NULL);
-    if (quit_saving) {
+    if (quit_state == 1) {
+        u64 t = osGetTime() - quit_t0;
         ui_text(BOT_W / 2, 90, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "Saving...");
-        if ((!uw_request_pending() && !uw_busy && osGetTime() - quit_t0 > 300) || osGetTime() - quit_t0 > 10000)
-            p3_quit();
+        if (!uw_request_pending() && !uw_busy && t > 300) {
+            if (uw_last_save_ok) p3_quit();
+            else { quit_state = 2; quit_why = "The quicksave failed. Is the SD card full?"; p3_pause(1); }
+        } else if (uw_request_pending() && t > 10000) {   /* never picked up: the game can't save now */
+            quit_state = 2; quit_why = "The game could not save just now."; p3_pause(1);
+        }
+        return;
+    }
+    if (quit_state == 2) {
+        ui_text(BOT_W / 2, 52, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "! Not saved");
+        ui_text_fit(BOT_W / 2, 76, 0.42f, COL_DIM, C2D_AlignCenter, BOT_W - 16, quit_why ? quit_why : "");
+        ui_text(BOT_W / 2, 96, 0.42f, COL_DIM, C2D_AlignCenter, 0, "Exit anyway? NO goes back to the game.");
+        if (ui_button(170, 130, 130, 40, "NO", 0)) { quit_state = 0; overlay = OV_MENU; }
+        if (ui_button(20, 130, 130, 40, "EXIT ANYWAY", 0)) p3_quit();
         return;
     }
     ui_text(BOT_W / 2, 60, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "Leave the game?");
@@ -726,8 +742,12 @@ static void menu_quit(void)
     /* NO is drawn first so the D-pad focus starts on it */
     if (ui_button(170, 130, 130, 40, "NO", 0)) overlay = OV_MENU;
     if (ui_button(20, 130, 130, 40, "YES", 0)) {
-        if (s->in_game && uw_request_save(4, "Quicksave")) { quit_saving = 1; quit_t0 = osGetTime(); p3_pause(0); }
-        else p3_quit();
+        if (!s->in_game) p3_quit();
+        else {
+            uw_last_save_ok = 0;
+            if (uw_request_save(4, "Quicksave")) { quit_state = 1; quit_t0 = osGetTime(); p3_pause(0); }
+            else { quit_state = 2; quit_why = "You can't save just now (a panel is open or you hold an item)."; }
+        }
     }
 }
 
