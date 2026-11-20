@@ -206,7 +206,26 @@ static int16_t *abuf;
 static LightEvent aev;
 static volatile int audio_on;
 
+static int ndsp_held;                /* 1 while we hold our ndspInit reference */
+
 static void ndsp_cb(void *ud) { (void)ud; LightEvent_Signal(&aev); }
+
+/* Give our ndsp reference back. Left held, the DSP thread keeps running while exit() frees the
+   heap its stack lives in, and it faults in ndspiReadChnState (the JA2 exit crash, Nov 20 2026).
+   Called at the end of plat_run and, for exit() from anywhere else (port_fatal's exit(1)),
+   from atexit. ndsp_held makes the second call do nothing: an unmatched ndspExit would
+   unbalance libctru's reference count. */
+static void audio_close(void)
+{
+    if (!ndsp_held) return;
+    ndsp_held = 0;
+    audio_on = 0;
+    LightEvent_Signal(&aev);
+    svcSleepThread(30000000LL);          /* the sound thread sees audio_on and stops */
+    ndspSetCallback(NULL, NULL);
+    ndspChnWaveBufClear(0);
+    ndspExit();
+}
 
 static void audio_thread(void *p)
 {
@@ -234,7 +253,7 @@ int plat_audio_open(int rate, void (*fill)(int16_t *, int))
     }
     audio_fill = fill;
     abuf = linearAlloc(AFRAMES * 4 * ABUFS);
-    if (!abuf) return -1;
+    if (!abuf) { ndspExit(); return -1; }
     memset(abuf, 0, AFRAMES * 4 * ABUFS);
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
     ndspChnReset(0);
@@ -251,6 +270,11 @@ int plat_audio_open(int rate, void (*fill)(int16_t *, int))
         wbuf[i].status = NDSP_WBUF_FREE;
     }
     LightEvent_Init(&aev, RESET_ONESHOT);
+    ndsp_held = 1;
+    {
+        static int registered;
+        if (!registered) { registered = 1; atexit(audio_close); }
+    }
     ndspSetCallback(ndsp_cb, NULL);
     audio_on = 1;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
@@ -889,13 +913,10 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         for (i = 0; i < 50 && !parked_game && !game_done; i++) svcSleepThread(20000000LL);
         svcSleepThread(50000000LL);         /* the timer and synthesizer wake often: they stop too */
     }
-    audio_on = 0;
-    LightEvent_Signal(&aev);
     fprintf(stderr, PLAT_NAME ": %u frames\n", frames);
     {
         fflush(NULL);
-        svcSleepThread(30000000LL);        /* the sound thread sees audio_on and stops */
-        ndspExit();
+        audio_close();                     /* stops the sound thread, then our ndsp reference */
         if (wide_on) { gfxSet3D(true); wide_on = 0; }
         C2D_Fini();
         C3D_Fini();
