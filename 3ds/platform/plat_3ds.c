@@ -21,7 +21,7 @@
 extern int ui_top_w;   /* front/ui.c: dashboard layout width */
 #include "ui/settings.h"
 u32 front_remap(u32 keys);   /* front.c: left-handed play */
-int front_save_now(unsigned pickup_ms);   /* front.c: UW-05's quicksave, on the main thread */
+int front_save_now(unsigned pickup_ms, unsigned limit_ms);   /* front.c: UW-05's quicksave, on the main thread */
 
 void port_pause(int on);               /* the runtime's sys/pit.c */
 void port_crash_handlers(void);        /* sys/crash.c */
@@ -755,37 +755,48 @@ static void draw(void)
     C3D_FrameEnd(0);
 }
 
-/* UW-05: HOME pressed or the lid closed. libctru calls these hooks on the main thread, from
-   aptMainLoop, just before it hands the screens over (and waits there until we're back); the
-   game's own thread would go on running meanwhile, with any key held at that moment still
-   down. So: every key and button is let go, a quicksave is made when the game is running
-   freely and can save (the game's thread writes it, as QUICKSAVE does; a second or so), and
-   the game's clock stops until we're back. With a menu or the settings open the game is
-   already paused and nothing is saved here (HOME -> Close still saves, below). */
+/* UW-05: HOME pressed or the lid closed. libctru calls these hooks from inside
+   aptJumpToHomeMenu() / aptHandleSleep() on the main thread, after the HOME transition has begun;
+   a save (or any wait or file write) in there froze HOME on real hardware in Star Fleet II (Nov 20
+   2026). So the hooks only set flags: the game's clock stops (port_pause is an atomic flag; the
+   game's thread, which would go on running behind the HOME Menu, waits at its next clock read)
+   and the main loop is told when we are back. The keys are let go and the journal is written on
+   the main thread just before aptMainLoop handles a HOME press (apt_before); on the way back the
+   keys are let go again and the clock restarts (apt_after). Nothing is saved on HOME itself;
+   HOME -> Close saves after the loop. */
 static int suspended;
+static volatile int resumed;
 
 static void apt_hook(APT_HookType h, void *p)
 {
     (void)p;
     if (h == APTHOOK_ONSUSPEND || h == APTHOOK_ONSLEEP) {
-        if (!suspended && !game_done && !quit_req) {
-            suspended = 1;
-            release_all();
-            if (!paused_by_front && !settings_open()) {
-                svcSleepThread(50000000LL);    /* the game sees the keys let go first */
-                fprintf(stderr, PLAT_NAME ": suspend: quicksave %s\n", front_save_now(1500) ? "made" : "not made");
-            }
-            port_pause(1);
-        }
-        if (hooks && hooks->lifecycle) hooks->lifecycle(PLAT_SUSPEND);
+        if (!suspended && !game_done && !quit_req) { suspended = 1; port_pause(1); }
     } else if (h == APTHOOK_ONRESTORE || h == APTHOOK_ONWAKEUP) {
-        if (suspended) {
-            suspended = 0;
-            release_all();
-            if (!paused_by_front && !settings_open()) port_pause(0);
-        }
-        if (hooks && hooks->lifecycle) hooks->lifecycle(PLAT_RESUME);
-    } else if (h == APTHOOK_ONEXIT && hooks && hooks->lifecycle) hooks->lifecycle(PLAT_QUIT_REQUEST);
+        if (suspended) resumed = 1;
+    }
+}
+
+/* Main thread, right before aptMainLoop: when a HOME press is waiting, let go of every key (the
+   game sees no key stuck down behind the HOME Menu) and write the journal's pending lines (a
+   small fflush, the same one front_tick makes every two seconds). */
+static void apt_before(void)
+{
+    extern void uw_journal_flush(void);
+    if (!aptShouldJumpToHome() || game_done || quit_req) return;
+    release_all();
+    uw_journal_flush();
+}
+
+/* Main thread, after aptMainLoop came back true: back from the HOME Menu or sleep. */
+static void apt_after(void)
+{
+    if (!resumed) return;
+    resumed = 0;
+    suspended = 0;
+    release_all();
+    if (!paused_by_front && !settings_open()) port_pause(0);
+    fprintf(stderr, PLAT_NAME ": back from the HOME Menu or sleep\n");
 }
 
 int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), void *arg)
@@ -834,11 +845,14 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
     if (!gt && game_core) gt = threadCreate(game_entry, NULL, 4 << 20, prio + 1, game_core == 2 ? 1 : 0, true);
     game_thread_h = gt;
     if (!gt) { plat_message(1, UW3DS_TITLE, "The game's thread could not start (out of memory)."); return 1; }
-    while (aptMainLoop() && !game_done && !quit_req) {
+    for (;;) {
         u32 down, held_k, up;
         circlePosition cp, cs;
         touchPosition t;
         int touching;
+        apt_before();
+        if (!aptMainLoop() || game_done || quit_req) break;   /* false: HOME -> Close or power off */
+        apt_after();
         hidScanInput();
         irrstScanInput();
         down = front_remap(hidKeysDown()); held_k = front_remap(hidKeysHeld()); up = front_remap(hidKeysUp());
@@ -891,16 +905,20 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         }
     }
     if (!game_done && !quit_req) {
-        /* UW-05: HOME -> Close (aptMainLoop said to close): the same quicksave EXIT GAME makes
-           (slot 4, through the scratch slot and swap), with the clock running and no key held,
-           finished before the game's thread is parked below. Not in a game, or not able to
-           save just now (a panel open, an item held): nothing is saved. */
+        /* UW-05: HOME -> Close or power off (aptMainLoop returned false), on the main thread,
+           outside the APT hooks: the same quicksave EXIT GAME makes (slot 4, through the scratch
+           slot and swap), with the clock running and no key held. Only where EXIT GAME could save
+           (in a game, no panel open, no item held): otherwise nothing is saved. At most 1.5 s for
+           the game to pick the request up and 4 s in all; then the game's thread is parked below
+           (itself at most a second) and the services shut down, whatever the game is doing. */
         int ok;
+        u64 c0 = osGetTime();
         release_all();
         port_pause(0);
-        ok = front_save_now(3000);
+        ok = front_save_now(1500, 4000);
         port_pause(1);
-        fprintf(stderr, PLAT_NAME ": close: quicksave %s\n", ok ? "made" : "not made");
+        fprintf(stderr, PLAT_NAME ": close: quicksave %s (%llu ms)\n", ok ? "made" : "not made",
+                (unsigned long long)(osGetTime() - c0));
     }
     if (!game_done && hooks->lifecycle) hooks->lifecycle(PLAT_QUIT_REQUEST);
     {

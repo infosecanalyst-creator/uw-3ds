@@ -751,13 +751,15 @@ static void menu_quit(void)
     }
 }
 
-/* UW-05: HOME, the lid and HOME -> Close. The platform (plat_3ds.c) calls this on the main
-   thread with the game's clock running and every key released; the save itself runs on the
-   game's thread exactly as the menu's QUICKSAVE / EXIT GAME do (slot 4 through the scratch slot
-   and swap, UW-01). It returns once the save is done or could not be made: 1 saved, 0 not
-   (not in a game, a panel open or an item held, the game never picked it up, or it failed).
-   A request that was never picked up is taken back so the game can't save later by surprise. */
-int front_save_now(unsigned pickup_ms)
+/* UW-05: HOME -> Close (aptMainLoop returned false). The platform (plat_3ds.c) calls this on the
+   main thread, after its loop and outside every APT hook, with the game's clock running and every
+   key released; the save itself runs on the game's thread exactly as the menu's QUICKSAVE / EXIT
+   GAME do (slot 4 through the scratch slot and swap, UW-01), and uw_request_save refuses where
+   EXIT GAME's would (a panel open, an item held). 1 saved, 0 not (not in a game, refused, not
+   picked up within PICKUP_MS, failed, or still writing at LIMIT_MS). A request that was never
+   picked up is taken back so the game can't save later by surprise. Never waits past LIMIT_MS:
+   the game's thread may be stuck, and a write cut off there leaves slot 4 as it was (scratch slot). */
+int front_save_now(unsigned pickup_ms, unsigned limit_ms)
 {
     const struct uwsnap *s = uw_snap();
     u64 t0 = osGetTime();
@@ -773,10 +775,10 @@ int front_save_now(unsigned pickup_ms)
             int slot;
             uwglue_take_request(&slot);         /* not picked up: take it back */
             svcSleepThread(50000000LL);
-            while (uw_busy && osGetTime() - t0 < 15000) svcSleepThread(20000000LL);   /* picked up just now */
+            while (uw_busy && osGetTime() - t0 < limit_ms) svcSleepThread(20000000LL);   /* picked up just now */
             return uw_busy ? 0 : uw_last_save_ok;
         }
-        if (!uw_request_pending() && uw_busy && t > 15000) return 0;   /* never cut a save off sooner */
+        if (t > limit_ms) return 0;
         svcSleepThread(20000000LL);
     }
 }

@@ -5,7 +5,7 @@
 
 /* front.c */
 u32 front_remap(u32 keys);              /* left-handed play: swap the D-pad and A/B/X/Y */
-int front_save_now(unsigned pickup_ms);  /* UW-05: quicksave now, from the main thread; 1 saved */
+int front_save_now(unsigned pickup_ms, unsigned limit_ms);  /* UW-05: HOME -> Close's quicksave, main thread; 1 saved */
 
 /* manual.c */
 void manual_load(void);
