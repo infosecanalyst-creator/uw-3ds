@@ -751,6 +751,36 @@ static void menu_quit(void)
     }
 }
 
+/* UW-05: HOME, the lid and HOME -> Close. The platform (plat_3ds.c) calls this on the main
+   thread with the game's clock running and every key released; the save itself runs on the
+   game's thread exactly as the menu's QUICKSAVE / EXIT GAME do (slot 4 through the scratch slot
+   and swap, UW-01). It returns once the save is done or could not be made: 1 saved, 0 not
+   (not in a game, a panel open or an item held, the game never picked it up, or it failed).
+   A request that was never picked up is taken back so the game can't save later by surprise. */
+int front_save_now(unsigned pickup_ms)
+{
+    const struct uwsnap *s = uw_snap();
+    u64 t0 = osGetTime();
+    if (!s->in_game) return 0;
+    if (quit_state != 1 && !uw_request_pending() && !uw_busy) {   /* EXIT GAME's own save: just wait for it */
+        uw_last_save_ok = 0;
+        if (!uw_request_save(4, "Quicksave")) return 0;
+    }
+    for (;;) {
+        u64 t = osGetTime() - t0;
+        if (!uw_request_pending() && !uw_busy && t > 300) return uw_last_save_ok;
+        if (uw_request_pending() && t > pickup_ms) {
+            int slot;
+            uwglue_take_request(&slot);         /* not picked up: take it back */
+            svcSleepThread(50000000LL);
+            while (uw_busy && osGetTime() - t0 < 15000) svcSleepThread(20000000LL);   /* picked up just now */
+            return uw_busy ? 0 : uw_last_save_ok;
+        }
+        if (!uw_request_pending() && uw_busy && t > 15000) return 0;   /* never cut a save off sooner */
+        svcSleepThread(20000000LL);
+    }
+}
+
 int front_draw_bottom(void)
 {
     if (!overlay) {

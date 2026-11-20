@@ -21,6 +21,7 @@
 extern int ui_top_w;   /* front/ui.c: dashboard layout width */
 #include "ui/settings.h"
 u32 front_remap(u32 keys);   /* front.c: left-handed play */
+int front_save_now(unsigned pickup_ms);   /* front.c: UW-05's quicksave, on the main thread */
 
 void port_pause(int on);               /* the runtime's sys/pit.c */
 void port_crash_handlers(void);        /* sys/crash.c */
@@ -730,13 +731,37 @@ static void draw(void)
     C3D_FrameEnd(0);
 }
 
+/* UW-05: HOME pressed or the lid closed. libctru calls these hooks on the main thread, from
+   aptMainLoop, just before it hands the screens over (and waits there until we're back); the
+   game's own thread would go on running meanwhile, with any key held at that moment still
+   down. So: every key and button is let go, a quicksave is made when the game is running
+   freely and can save (the game's thread writes it, as QUICKSAVE does; a second or so), and
+   the game's clock stops until we're back. With a menu or the settings open the game is
+   already paused and nothing is saved here (HOME -> Close still saves, below). */
+static int suspended;
+
 static void apt_hook(APT_HookType h, void *p)
 {
     (void)p;
-    if (!hooks || !hooks->lifecycle) return;
-    if (h == APTHOOK_ONSUSPEND || h == APTHOOK_ONSLEEP) { hooks->lifecycle(PLAT_SUSPEND); }
-    else if (h == APTHOOK_ONRESTORE || h == APTHOOK_ONWAKEUP) { hooks->lifecycle(PLAT_RESUME); }
-    else if (h == APTHOOK_ONEXIT) hooks->lifecycle(PLAT_QUIT_REQUEST);
+    if (h == APTHOOK_ONSUSPEND || h == APTHOOK_ONSLEEP) {
+        if (!suspended && !game_done && !quit_req) {
+            suspended = 1;
+            release_all();
+            if (!paused_by_front && !settings_open()) {
+                svcSleepThread(50000000LL);    /* the game sees the keys let go first */
+                fprintf(stderr, PLAT_NAME ": suspend: quicksave %s\n", front_save_now(1500) ? "made" : "not made");
+            }
+            port_pause(1);
+        }
+        if (hooks && hooks->lifecycle) hooks->lifecycle(PLAT_SUSPEND);
+    } else if (h == APTHOOK_ONRESTORE || h == APTHOOK_ONWAKEUP) {
+        if (suspended) {
+            suspended = 0;
+            release_all();
+            if (!paused_by_front && !settings_open()) port_pause(0);
+        }
+        if (hooks && hooks->lifecycle) hooks->lifecycle(PLAT_RESUME);
+    } else if (h == APTHOOK_ONEXIT && hooks && hooks->lifecycle) hooks->lifecycle(PLAT_QUIT_REQUEST);
 }
 
 int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), void *arg)
@@ -840,6 +865,18 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
             }
             (void)e;
         }
+    }
+    if (!game_done && !quit_req) {
+        /* UW-05: HOME -> Close (aptMainLoop said to close): the same quicksave EXIT GAME makes
+           (slot 4, through the scratch slot and swap), with the clock running and no key held,
+           finished before the game's thread is parked below. Not in a game, or not able to
+           save just now (a panel open, an item held): nothing is saved. */
+        int ok;
+        release_all();
+        port_pause(0);
+        ok = front_save_now(3000);
+        port_pause(1);
+        fprintf(stderr, PLAT_NAME ": close: quicksave %s\n", ok ? "made" : "not made");
     }
     if (!game_done && hooks->lifecycle) hooks->lifecycle(PLAT_QUIT_REQUEST);
     {
