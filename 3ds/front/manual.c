@@ -136,8 +136,8 @@ void manual_draw_top(void)
         snprintf(st, sizeof st, "%d / %d", cur + 1, nch);
         ui_header(TOP_W, ch[cur].title, st);
     }
-    ui_hint(TOP_W, front_lefty() ? "Sticks: scroll   A/B/X/Y: section   L R: previous / next   D-Down / START: close"
-                                                                                 : "Sticks: scroll   D-pad: section   L R: previous / next   B / START: close", 0);
+    ui_hint(TOP_W, front_lefty() ? "Sticks: scroll   A/B/X/Y, L / R: section   D-Down / START: close"
+                                                                                 : "Sticks: scroll   D-Pad, L / R: section   B / START: close", 0);
 }
 
 const char *manual_title(int chapter)
