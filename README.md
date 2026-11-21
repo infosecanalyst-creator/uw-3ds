@@ -32,5 +32,7 @@ python3 tools/build3ds.py uw2
 ## Installing
 Copy `uw1-3ds.3dsx` directly to `/3ds/` (as `/3ds/uw1-3ds.3dsx`) and your UW1 folder (UW.EXE, DATA, CRIT, CUTS, SOUND) to `/3ds/uw1/game/`; likewise `uw2-3ds.3dsx` to `/3ds/uw2-3ds.3dsx` and UW2 to `/3ds/uw2/game/`. Saves and settings go to `/3ds/uwN/home/`, the log to `/3ds/uwN/log.txt`. Sound needs `/3ds/dspfirm.cdc`.
 
+Quicksave (port menu, slot 4) is written to a scratch slot and swapped in, so a failed one keeps the old. Quit and HOME > Close quicksave first; if the game cannot save, Quit asks "Exit anyway?". A new character starts a new journal (the old one is kept as `journal-N.txt`). `3ds.cfg` is written only when a setting changed.
+
 ## Licences
 The port's own code (`3ds/`, `tools/`, `patches/`) is MIT. Underworld Exhumed's own work is MIT; its decompiled code derives from the games, whose copyright is Electronic Arts' (see its NOTICE). Nuked OPL3 (c) Nuke.YKT is LGPL-2.1: it is fetched, not committed, but it is linked into the built `.3dsx` files, so [`THIRD_PARTY_NOTICES.txt`](THIRD_PARTY_NOTICES.txt) carries its notice and how to rebuild with a modified copy, and the licence text is in [`licenses/LGPL-2.1-Nuked-OPL3.txt`](licenses/LGPL-2.1-Nuked-OPL3.txt) (both also go to the `builds` branch with the binaries). Ultima Underworld is a trademark of Electronic Arts. Not affiliated with or endorsed by the rights holders.

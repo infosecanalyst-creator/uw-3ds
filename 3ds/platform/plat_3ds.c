@@ -816,6 +816,14 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
     C2D_Prepare();
     top_l = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     /* the top screen's 800-wide mode, for when the 3D slider is down (see top_begin) */
+    /* UW-14 (Nov 21 2026): this target keeps its depth/stencil buffer (768 KB of VRAM) on purpose. Every
+       draw in this port is at z = 0.5 so nothing here reads depth to order draws, BUT citro2d's
+       C2D_Prepare() turns the depth test on (C3D_DepthTest(true, GPU_GEQUAL, GPU_WRITE_ALL)) and
+       C2D_TargetClear() clears color and depth together; citro2d's own screen targets (top_l, top_r,
+       bot) are created with a DEPTH24_STENCIL8 buffer for the same reason. A target without one would
+       draw with the depth test on and nothing to test against: undefined without a hardware test, so
+       it is not dropped. To try it: pass a negative depth format here and test the 3D slider down
+       (800-wide) mode on the console. */
     top_w = C3D_RenderTargetCreate(240, 800, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
     if (top_w) C3D_RenderTargetSetOutput(top_w, GFX_TOP, GFX_LEFT,
         GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |

@@ -40,10 +40,10 @@ In the port menu you can zoom the map and look at other levels.
 Your vitality, mana, level and experience, how hungry and tired you are, any poison, your light, and the spells working on you.
 
 # Page: Log
-Every message the scroll at the bottom of the game screen has shown, so nothing is lost when it scrolls away. Hold SELECT and use the Circle Pad to read back.
+Every message the scroll at the bottom of the game screen has shown, so nothing is lost when it scrolls away. Hold SELECT and use the Circle Pad to read back, or drag the stylus up or down the page (it glides a little when you let go).
 
 # Page: Journal
-Every conversation you have had, by the person you spoke to: what they said and what you answered. Reread clues instead of writing them on paper. The journal is kept with your saved games.
+Every conversation you have had, by the person you spoke to: what they said and what you answered. Reread clues instead of writing them on paper. The journal is kept with your saved games, in journal.txt. When you start a new character the old journal is moved aside as journal-1.txt (then journal-2.txt and so on) and a fresh one begins. Like the Log and the Spells page, it scrolls by dragging the stylus.
 
 # Page: Spells
 Your spell book: every spell whose runes you have learned, with its runes, and which D-pad direction it is on.
@@ -58,6 +58,10 @@ The Spells page lists every hotkey.
 # Saving
 Quicksave and Quickload are in the port menu. They use the game's own save slot 4, so they also show in the game's own Save and Restore screens.
 
+A quicksave is written to a scratch slot first and swapped into slot 4 only when it is complete, so a failed quicksave (for example a full SD card) never costs you the old one. The game says "Quicksave FAILED - is the SD card full?" and never says it saved when it did not. The game cannot save while a panel is open or while you hold an item on the cursor; put the item down and try again.
+
+Quit in the port menu quicksaves first, then leaves. If it cannot save it shows "! Not saved" with the reason (the quicksave failed, or you cannot save just now) and asks "Exit anyway?": NO goes back to the game. It never leaves silently after a failed save. Closing the game from the HOME menu (HOME, then Close) does the same quicksave first, for a few seconds at most. Pressing HOME alone only pauses the game; it saves nothing by itself.
+
 Closing the 3DS lid pauses the game.
 
 # The port menu
@@ -69,7 +73,7 @@ Map: zoom in and out, and look at other levels.
 Manual: this book.
 A/B and Left hand: A/B swaps which of the two confirms. Left hand: on swaps the D-pad with the face buttons: Y is up, A is right, B is down, X is left, and the reverse. Your choice is kept.
 Settings: the port's settings: sound, the enhancements and fixes.
-Quit: leave the game (save first).
+Quit: quicksave to slot 4, then leave the game (asks first if the save failed).
 
 # Enhancements and fixes
 These start turned on. You can turn any of them off in Settings, under Enhancements.
@@ -85,7 +89,9 @@ Wide pitch (look further up and down) and free heading (sliding along a wall doe
 # Your game files
 The port needs your own copy of the game (the GOG release). Copy the game's folder, the one that holds UW.EXE, DATA, CRIT, CUTS and SOUND, to the SD card as /3ds/uw1/game. GOG's game.gog CD image works too.
 
-Saved games and settings are kept in /3ds/uw1/home. The log of the last run is /3ds/uw1/log.txt.
+Saved games and settings are kept in /3ds/uw1/home. The settings file (3ds.cfg) is written only when something changed (when you close the menu, after 3 seconds without input, and on exit), through a temporary file. The log of the last run is /3ds/uw1/log.txt.
+
+The program is /3ds/uw1-3ds.3dsx, directly in /3ds (for Underworld II, /3ds/uw2-3ds.3dsx and the folders /3ds/uw2/...). The port's build number is shown at the end of this manual.
 
 # Credits
 The game: Ultima Underworld, Blue Sky Productions and Origin Systems, 1992. Copyright Electronic Arts. Bring your own copy.
