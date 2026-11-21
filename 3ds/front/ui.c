@@ -47,7 +47,8 @@ float ui_text(float x, float y, float size, u32 col, int flags, float wrap, cons
     if (flags & C2D_WordWrap) {
         /* the wrapped height: C2D gives the unwrapped; count the lines by width */
         C2D_TextGetDimensions(&t, size, size, &w, &h);
-        return h * (1 + (int)(w / (wrap > 1 ? wrap : 1)));
+        (void)w;
+        return h * ui_wrap_lines(size, s, wrap);   /* the real line count (width / wrap undercounted: paragraphs overlapped) */
     }
     C2D_TextGetDimensions(&t, size, size, &w, &h);
     return h;
@@ -106,6 +107,18 @@ int ui_wrap_lines(float size, const char *s, float wrap)
         }
     }
     return lines;
+}
+
+/* Height of s word-wrapped at width wrap, the same value ui_text returns when it draws it. */
+float ui_wrap_height(float size, const char *s, float wrap)
+{
+    C2D_Text t;
+    float w, h;
+    if (!s || !*s) return 0;
+    if (tbw) C2D_TextBufClear(tbw);
+    if (!C2D_TextParse(&t, tbw ? tbw : tb, s)) return 0;
+    C2D_TextGetDimensions(&t, size, size, &w, &h);
+    return h * ui_wrap_lines(size, s, wrap);
 }
 
 void ui_rect(float x, float y, float w, float h, u32 col)

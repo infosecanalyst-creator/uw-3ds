@@ -120,7 +120,7 @@ void manual_draw_top(void)
         if (n) {
             float h = 0;
             if (y > -60 && y < TOP_H) h = ui_text(10, y, 0.46f, COL_TEXT, C2D_WordWrap, TOP_W - 20, para);
-            else h = 14.0f * (1 + (int)(ui_text_width(0.46f, para) / (TOP_W - 20)));
+            else h = ui_wrap_height(0.46f, para, TOP_W - 20);   /* off screen: the same height as when drawn */
             y += h + 4;
         } else
             y += 4;
