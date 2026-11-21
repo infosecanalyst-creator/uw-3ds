@@ -2,6 +2,7 @@
 
 ## 2026-11-21
 
+- Manual: the text no longer scrolls past its last line to an empty page.
 - The game stays smooth while the map, notes and journal are saved or loaded: that file work now happens off the screen thread, and the map is stored in runs (smaller, faster).
 - Dragging a page (Log, Journal, Spells, manual) glides, but the glide stops when you change page or open a menu, and is capped.
 - Log and journal page heights use the real wrapped line count, so the last lines are never cut off.

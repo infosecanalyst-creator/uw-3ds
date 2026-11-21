@@ -16,6 +16,7 @@ static char *book;
 static struct { const char *title; const char *body; } ch[MAXCH];
 static int nch;
 static int cur, scroll;
+static int max_scroll = 1 << 20;   /* the chapter's length past the page, from the last draw */
 
 static void subst(char *s)
 {
@@ -69,6 +70,7 @@ void manual_open(int chapter)
 {
     cur = chapter < 0 ? 0 : chapter >= nch ? nch - 1 : chapter;
     scroll = 0;
+    max_scroll = 1 << 20;
 }
 
 int manual_current(void) { return cur; }
@@ -87,7 +89,7 @@ void manual_input(u32 down, u32 held, circlePosition cp, circlePosition cs)
     if (down & KEY_DLEFT) to = cur - 1;
     if (down & KEY_DDOWN) to = cur + 2;
     if (down & KEY_DUP) to = cur - 2;
-    if (to != cur && to >= 0 && to < nch) { cur = to; scroll = 0; }
+    if (to != cur && to >= 0 && to < nch) { cur = to; scroll = 0; max_scroll = 1 << 20; }
     if (cp.dy < -40 || cs.dy < -40) scroll += (cp.dy < -110 || cs.dy < -110) ? 6 : 3;
     if (cp.dy > 40 || cs.dy > 40) scroll -= (cp.dy > 110 || cs.dy > 110) ? 6 : 3;
     /* drag the stylus on the touch screen to scroll, with a little momentum (rule 13) */
@@ -97,6 +99,7 @@ void manual_input(u32 down, u32 held, circlePosition cp, circlePosition cs)
         else if (mom > 0.5f || mom < -0.5f) { scroll += (int)mom; mom *= 0.88f; }
         else mom = 0;
     }
+    if (scroll > max_scroll) scroll = max_scroll;   /* never past the last line (it scrolled to an empty page) */
     if (scroll < 0) scroll = 0;
 }
 
@@ -122,6 +125,10 @@ void manual_draw_top(void)
         } else
             y += 4;
         p = e ? e + 1 : p + n;
+    }
+    {   /* the text ends at y: it may scroll until its last line sits just above the hint strip */
+        int m = (int)(y + (float)scroll) - (TOP_H - 16 - 6);
+        max_scroll = m > 0 ? m : 0;
     }
     /* header and footer last, so scrolled text can never show through them */
     {
