@@ -170,6 +170,7 @@ static struct person {
 static int npeople, latest = -1;
 static FILE *jfile;
 static int jdirty;
+static char jchar[64];                 /* whose journal.txt this is: name|class|female (UW-12) */
 
 static int person_of(int conv, int whoami, int item)
 {
@@ -237,6 +238,7 @@ void uw_journal_open(void)
         while (fgets(line, sizeof line, f)) {
             int conv, whoami, item, who, n = 0;
             line[strcspn(line, "\r\n")] = 0;
+            if (!strncmp(line, "#char|", 6)) { snprintf(jchar, sizeof jchar, "%s", line + 6); continue; }
             if (sscanf(line, "%d|%d|%d|%d|%n", &conv, &whoami, &item, &who, &n) == 4 && n)
                 journal_add(conv, whoami, item, who, line + n, 0);
         }
@@ -244,6 +246,51 @@ void uw_journal_open(void)
     }
     latest = -1;
     jfile = fopen(UW3DS_HOME "/journal.txt", "a");
+}
+
+static void journal_forget(void)
+{
+    int i, k;
+    for (i = 0; i < npeople; i++) {
+        for (k = 0; k < people[i].n; k++) free(people[i].lines[k].text);
+        free(people[i].lines);
+        memset(&people[i], 0, sizeof people[i]);
+    }
+    npeople = 0;
+    latest = -1;
+}
+
+/* UW-12: the journal belongs to one character. Called once the game is running with the
+   character's name: the first time it only claims the file (an older file with no owner is taken
+   to be this character's); a different character moves journal.txt aside as journal-N.txt (never
+   deleted) and starts a fresh one. */
+int uw_journal_character(const char *name, int pclass, int female)
+{
+    int fresh = 0;
+    char id[64];
+    if (!name || !*name) return 0;
+    snprintf(id, sizeof id, "%s|%d|%d", name, pclass, female);
+    lock();
+    if (!strcmp(id, jchar)) { unlock(); return 0; }
+    if (jchar[0]) {
+        char to[200];
+        int k;
+        if (jfile) { fclose(jfile); jfile = NULL; }
+        for (k = 1; k < 1000; k++) {
+            FILE *t;
+            snprintf(to, sizeof to, UW3DS_HOME "/journal-%d.txt", k);
+            if (!(t = fopen(to, "r"))) break;
+            fclose(t);
+        }
+        rename(UW3DS_HOME "/journal.txt", to);
+        journal_forget();
+        jfile = fopen(UW3DS_HOME "/journal.txt", "a");
+        fresh = 1;
+    }
+    snprintf(jchar, sizeof jchar, "%s", id);
+    if (jfile) { fprintf(jfile, "#char|%s\n", id); fflush(jfile); }
+    unlock();
+    return fresh;
 }
 
 void uw_journal_flush(void)

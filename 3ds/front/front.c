@@ -37,6 +37,8 @@ static const char *const tab_names[TABS] = { "Game", "Map", "Status", "Log", "Jo
 enum { OV_NONE, OV_MENU, OV_HOTKEYS, OV_MAP, OV_MANUAL, OV_QUIT };
 
 static int tab, overlay;
+static int drag_acc, drag_mom_tab = -1;   /* the page drag's rows and glide (UW-10): reset by a menu or a page change */
+static float drag_mom;
 static int log_back, journal_person = -1, journal_back, spells_scroll;
 static int hotkey[4] = { -1, -1, -1, -1 };     /* up, right, down, left: a spell's index */
 static int pick_spell = -1, pick_scroll;
@@ -85,12 +87,40 @@ static void say(const char *m)
 
 #define OPTS UW3DS_HOME "/3ds.cfg"
 
+/* UW-13: 3ds.cfg is written only when a setting changed (opts_save just marks it), and then when
+   the menu closes, 3 s after the last change (a page tab tapped in play), or at exit; never twice
+   with the same text. Temp file, checked write and close, then swapped in. */
+static int opts_dirty;
+static unsigned opts_stamp;
+static char opts_last[256];
+
+static int opts_format(char *buf, size_t sz)
+{
+    return snprintf(buf, sz, "page=%d\nzoom=%d\nhotkeys=%d,%d,%d,%d\nswapab=%d\nlefty=%d\n", tab, map_zoom_level(), hotkey[0], hotkey[1], hotkey[2], hotkey[3], swap_ab, lefty);
+}
+
+static void opts_flush(void)
+{
+    char buf[256];
+    FILE *f;
+    int n;
+    if (!opts_dirty) return;
+    opts_dirty = 0;
+    n = opts_format(buf, sizeof buf);
+    if (n <= 0 || n >= (int)sizeof buf || !strcmp(buf, opts_last)) return;
+    f = fopen(OPTS ".tmp", "w");
+    if (!f) return;
+    if (fwrite(buf, 1, (size_t)n, f) != (size_t)n || fclose(f) != 0) { remove(OPTS ".tmp"); return; }
+    remove(OPTS ".bak");
+    rename(OPTS, OPTS ".bak");
+    if (rename(OPTS ".tmp", OPTS) != 0) { rename(OPTS ".bak", OPTS); return; }
+    strcpy(opts_last, buf);
+}
+
 static void opts_save(void)
 {
-    FILE *f = fopen(OPTS, "w");
-    if (!f) return;
-    fprintf(f, "page=%d\nzoom=%d\nhotkeys=%d,%d,%d,%d\nswapab=%d\nlefty=%d\n", tab, map_zoom_level(), hotkey[0], hotkey[1], hotkey[2], hotkey[3], swap_ab, lefty);
-    fclose(f);
+    opts_dirty = 1;
+    opts_stamp = p3_frame();
 }
 
 static void opts_load(void)
@@ -107,6 +137,7 @@ static void opts_load(void)
         if (sscanf(l, "lefty=%d", &z) == 1) lefty = z != 0;
     }
     fclose(f);
+    opts_format(opts_last, sizeof opts_last);   /* what is on the card now: writing the same again is skipped */
 }
 
 /* Left-handed play: the D-pad and the face buttons swap jobs (Y<->up, A<->right, B<->down, X<->left).
@@ -130,6 +161,7 @@ void front_init(void)
     ui_init();
     manual_load();
     opts_load();
+    atexit(opts_flush);
     uw_journal_open();
 }
 
@@ -239,6 +271,7 @@ static void at_cursor(int code)
 static void open_menu(int ov)
 {
     overlay = ov;
+    drag_mom = 0; drag_acc = 0;
     p3_release_keys();
     p3_pause(ov != OV_NONE);
 }
@@ -289,7 +322,7 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
     /* rule 13: the manual, and the Log, Journal and Spells pages, scroll by dragging */
     ui_drag_scroll(overlay == OV_MANUAL || (!overlay && (tab == TAB_LOG || tab == TAB_JOURNAL || tab == TAB_SPELLS)));
     ui_touch(touching, t.px, t.py);
-    if (overlay) { was_touching = touching; touch_mine = 0; return menu_input(down, held, cp, cs, touching, t); }
+    if (overlay) { drag_mom = 0; drag_acc = 0; was_touching = touching; touch_mine = 0; return menu_input(down, held, cp, cs, touching, t); }
     /* a touch belongs to the front end (the tabs, a page) or to the game, by where it started */
     if (touching && !was_touching) {
         float gh = front_game_height();
@@ -298,16 +331,23 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
     mine = (touching || was_touching) && touch_mine;
     was_touching = touching;
     {   /* drag a page: the text follows the stylus, one entry or row per 14 px, with a little momentum */
-        static int acc;
-        static float mom;
         int dy = 0;
-        if (mine && ui_dragging()) { dy = ui_drag_dy(); mom = (float)dy; }
-        else if (!touching && (mom > 0.5f || mom < -0.5f)) { dy = (int)mom; mom *= 0.88f; }
-        else { mom = 0; acc = 0; }
+        if (tab != drag_mom_tab) { drag_mom_tab = tab; drag_mom = 0; drag_acc = 0; }   /* UW-10: a page change ends the glide */
+        if (mine && ui_dragging()) {
+            dy = ui_drag_dy();
+            drag_mom = dy > 60 ? 60.0f : dy < -60 ? -60.0f : (float)dy;   /* a flick can't throw the page a whole log */
+        } else if (!touching && (drag_mom > 0.5f || drag_mom < -0.5f)) {
+            dy = (int)drag_mom;
+            drag_mom *= 0.88f;
+        } else {
+            drag_mom = 0; drag_acc = 0;
+        }
         if (dy && tab != TAB_GAME && tab != TAB_MAP) {
-            acc += tab == TAB_SPELLS ? -dy : dy;   /* Log/Journal: newest at the bottom, so down = older */
-            while (acc >= 14) { tab_scroll(1, 0); acc -= 14; }
-            while (acc <= -14) { tab_scroll(-1, 0); acc += 14; }
+            drag_acc += tab == TAB_SPELLS ? -dy : dy;   /* Log/Journal: newest at the bottom, so down = older */
+            while (drag_acc >= 14) { tab_scroll(1, 0); drag_acc -= 14; }
+            while (drag_acc <= -14) { tab_scroll(-1, 0); drag_acc += 14; }
+        } else if (dy) {
+            drag_mom = 0; drag_acc = 0;     /* the Game and Map pages don't scroll: no glide to carry over */
         }
     }
     if (touching && !mine) moved_since_touch = 0;
@@ -376,6 +416,16 @@ void front_tick(void)
     uw_glue_tick();
     keyboard();
     if (p3_frame() - last_flush > 120) { uw_journal_flush(); last_flush = p3_frame(); }
+    if (opts_dirty && p3_frame() - opts_stamp > 180) opts_flush();
+    {   /* UW-12: once per run into the game, tell the journal whose it is; a new character starts a new one */
+        static int told;
+        const struct uwsnap *s = uw_snap();
+        if (!s->in_game) told = 0;
+        else if (!told && s->name[0]) {
+            told = 1;
+            if (uw_journal_character(s->name, s->pclass, s->female)) { journal_person = -1; journal_back = 0; }
+        }
+    }
 }
 
 /* ---- the dashboard's pages, on the bottom screen above the tabs (PG_W x PG_H) ---- */
@@ -446,7 +496,7 @@ static void draw_log(void)
         float h;
         char l[200];
         snprintf(l, sizeof l, "%s", uw_log_line(i));
-        h = 14.0f * (1 + (int)(ui_text_width(0.42f, l) / (PG_W - 16)));
+        h = 14.0f * ui_wrap_lines(0.42f, l, PG_W - 16);   /* UW-11: the real wrapped height */
         y -= h;
         if (y < 2) break;
         ui_text(8, y, 0.42f, COL_TEXT, C2D_WordWrap, PG_W - 16, l);
@@ -479,7 +529,7 @@ static void draw_journal(void)
     for (i = n - 1 - journal_back; i >= 0; i--) {
         int who;
         const char *l = uw_journal_line(p, i, &who);
-        float h = 13.0f * (1 + (int)(ui_text_width(0.4f, l) / (PG_W - 24)));
+        float h = 13.0f * ui_wrap_lines(0.4f, l, PG_W - 26);   /* UW-11: the width ui_text wraps at */
         y -= h + 2;
         if (y < 18) break;
         ui_text(who == 1 ? 18 : 8, y, 0.4f, who == 1 ? COL_GOLD : who == 2 ? COL_DIM : COL_TEXT, C2D_WordWrap, PG_W - 26, l);
@@ -614,7 +664,7 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
     }
     if (down & BACK_KEY) overlay = overlay == OV_MENU ? OV_NONE : OV_MENU;
     if (down & KEY_START) overlay = OV_NONE;
-    if (overlay == OV_NONE) { p3_pause(0); opts_save(); }
+    if (overlay == OV_NONE) { p3_pause(0); opts_save(); opts_flush(); }
     return 1;
 }
 
@@ -819,6 +869,6 @@ int front_draw_bottom(void)
     case OV_MANUAL: menu_manual(); break;
     case OV_QUIT: menu_quit(); break;
     }
-    if (overlay == OV_NONE) { p3_pause(0); opts_save(); }
+    if (overlay == OV_NONE) { p3_pause(0); opts_save(); opts_flush(); }
     return 1;
 }

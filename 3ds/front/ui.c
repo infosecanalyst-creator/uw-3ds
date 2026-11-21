@@ -64,6 +64,40 @@ float ui_text_width(float size, const char *s)
     return w;
 }
 
+/* How many lines C2D's word wrap gives s at width wrap: greedy by words, each word measured once
+   (the font has no kerning, so widths add up). The old estimate, whole width / wrap, undercounted
+   whenever a word did not fit the end of a line, and the next log line was drawn over this one. */
+int ui_wrap_lines(float size, const char *s, float wrap)
+{
+    float sp, cur = 0, ww;
+    int lines = 1;
+    char word[96];
+    if (!s || !*s) return 1;
+    if (wrap < 8) wrap = 8;
+    wrap -= 1.0f;
+    sp = ui_text_width(size, " ");
+    while (*s) {
+        int n = 0;
+        while (*s == ' ') s++;
+        if (*s == '\n') { lines++; cur = 0; s++; continue; }
+        while (*s && *s != ' ' && *s != '\n' && n < (int)sizeof word - 1) word[n++] = *s++;
+        word[n] = 0;
+        if (!n) break;
+        ww = ui_text_width(size, word);
+        if (ww > wrap) {                       /* a word longer than a line is broken */
+            if (cur > 0) lines++;
+            lines += (int)(ww / wrap);
+            cur = ww - (int)(ww / wrap) * wrap;
+        } else if (cur > 0 && cur + sp + ww > wrap) {
+            lines++;
+            cur = ww;
+        } else {
+            cur += (cur > 0 ? sp : 0) + ww;
+        }
+    }
+    return lines;
+}
+
 void ui_rect(float x, float y, float w, float h, u32 col)
 {
     C2D_DrawRectSolid(x, y, 0.5f, w, h, col);

@@ -58,6 +58,7 @@ const char *uw_journal_name(int person);
 int uw_journal_count(int person);
 const char *uw_journal_line(int person, int i, int *who);   /* who: 0 they said, 1 you said, 2 narration */
 int uw_journal_latest(void);            /* the person spoken to last, or -1 */
+int uw_journal_character(const char *name, int pclass, int female);   /* UW-12: 1 if a new character started a fresh journal */
 
 /* Requests run on the game's thread at its next safe point: 1 if taken. */
 int uw_request_save(int slot, const char *desc);

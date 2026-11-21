@@ -37,6 +37,7 @@ void ui_begin(void);                    /* once a frame, before any text */
 float ui_text(float x, float y, float size, u32 col, int flags, float wrap, const char *s);
 float ui_textf(float x, float y, float size, u32 col, const char *fmt, ...) __attribute__((format(printf, 5, 6)));
 float ui_text_width(float size, const char *s);
+int ui_wrap_lines(float size, const char *s, float wrap);   /* lines a word-wrapped text takes (UW-11) */
 /* ui_text on one line, shrunk (down to 0.28) until it fits MAXW pixels: a label never runs off. */
 float ui_text_fit(float x, float y, float size, u32 col, int flags, float maxw, const char *s);
 void ui_rect(float x, float y, float w, float h, u32 col);
