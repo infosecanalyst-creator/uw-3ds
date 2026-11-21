@@ -30,6 +30,12 @@ jobs:
           mkdir -p out
           cp build/uw1/uw1-3ds.3dsx build/uw2/uw2-3ds.3dsx out/ 2>/dev/null || true
           cp build-uw*.log out/ 2>/dev/null || true
+          cp LICENSE THIRD_PARTY_NOTICES.txt licenses/LGPL-2.1-Nuked-OPL3.txt out/ 2>/dev/null || true   # licences travel with the binaries
+          # symbols for reading crash addresses: gzipped ELF (addr2line) and a demangled nm map
+          for g in uw1 uw2; do
+            gzip -9c build/$g/$g-3ds.elf > out/$g-3ds.elf.gz 2>/dev/null || true
+            "$DEVKITARM/bin/arm-none-eabi-nm" -C -n build/$g/$g-3ds.elf 2>/dev/null | gzip -9 > out/$g-3ds.sym.gz || true
+          done
           echo "$GITHUB_SHA" > out/SOURCE_COMMIT
       - name: Publish to builds branch
         if: success()   # never replace the last good build with a failed one; failed-build logs stay in the Actions run

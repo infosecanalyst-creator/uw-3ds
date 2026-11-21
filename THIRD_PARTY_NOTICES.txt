@@ -1,0 +1,32 @@
+uw-3ds: third-party notices
+===========================
+
+Nuked OPL3 (OPL3 / AdLib music emulation)
+-----------------------------------------
+uw1-3ds.3dsx and uw2-3ds.3dsx contain Nuked OPL3 v1.8,
+Copyright (C) 2013-2020 Nuke.YKT, https://github.com/nukeykt/Nuked-OPL3
+(commit 765ec962e473aeb767e4cba74ffdc8f588ffbfe8, unmodified).
+
+Nuked OPL3 is free software: you can redistribute it and/or modify it under the
+terms of the GNU Lesser General Public License as published by the Free Software
+Foundation, either version 2.1 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY; see the licence for details.
+The full licence text is in licenses/LGPL-2.1-Nuked-OPL3.txt (also published
+next to the .3dsx files on the builds branch).
+
+Replacing the library (LGPL-2.1 section 6): the complete source of this port is
+in this repository. tools/setup.sh fetches Nuked OPL3 into vendor/nuked-opl3 and
+tools/build3ds.py compiles it as a separate object and links it with the rest of
+the game, so a modified Nuked OPL3 can be dropped into vendor/nuked-opl3 and the
+.3dsx rebuilt with it.
+
+Other components
+----------------
+- Underworld Exhumed (https://github.com/abedegno/underworld-exhumed) and Exhume:
+  their own work is MIT; their decompiled game code derives from the games,
+  whose copyright is Electronic Arts' (see Underworld Exhumed's NOTICE). Fetched
+  by tools/setup.sh at pinned commits and patched by patches/*.patch.
+- libctru, citro3d, citro2d (devkitPro): zlib License.
+- devkitARM runtime (newlib: BSD-style licences; libgcc: GPLv3 with the GCC
+  Runtime Library Exception).
+- This port's own code (3ds/, tools/, patches/): MIT, see LICENSE.
