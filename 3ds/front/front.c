@@ -722,7 +722,11 @@ static void menu_quit(void)
         ui_text(BOT_W / 2, 90, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "Saving...");
         if (!uw_request_pending() && !uw_busy && t > 300) {
             if (uw_last_save_ok) p3_quit();
-            else { quit_state = 2; quit_why = "The quicksave failed. Is the SD card full?"; p3_pause(1); }
+            else {
+                quit_state = 2; p3_pause(1);
+                quit_why = uw_last_save_refused ? "You can't save just now (a panel is open or you hold an item)."
+                                                : "The quicksave failed. Is the SD card full?";
+            }
         } else if (uw_request_pending() && t > 10000) {   /* never picked up: the game can't save now */
             quit_state = 2; quit_why = "The game could not save just now."; p3_pause(1);
         }
@@ -745,6 +749,7 @@ static void menu_quit(void)
         if (!s->in_game) p3_quit();
         else {
             uw_last_save_ok = 0;
+            uw_last_save_refused = 0;
             if (uw_request_save(4, "Quicksave")) { quit_state = 1; quit_t0 = osGetTime(); p3_pause(0); }
             else { quit_state = 2; quit_why = "You can't save just now (a panel is open or you hold an item)."; }
         }

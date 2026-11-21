@@ -137,6 +137,7 @@ static void run_request(void)
     int r = uwglue_take_request(&slot);
     if (!r) return;
     if (!safe_now()) {
+        if (r == 1) uw_last_save_refused = 1;   /* UW-03: the exit question gives the real reason */
         uwglue_result(r == 1 ? "You cannot save just now." : "You cannot restore just now.");
         return;
     }

@@ -439,6 +439,7 @@ int uw_text_wanted(char *prompt, int psz, int *maxlen, int *digits)
 #include <sys/stat.h>
 #include <unistd.h>
 volatile int uw_last_save_ok;
+volatile int uw_last_save_refused;   /* UW-03: the game turned the last save request down (not safe now) */
 
 static void rm_tree(const char *path)
 {
