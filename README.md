@@ -2,7 +2,7 @@
 
 A dual-screen 3DS port of *Ultima Underworld: The Stygian Abyss* and *Ultima Underworld II: Labyrinth of Worlds*, built on [Underworld Exhumed](https://github.com/abedegno/underworld-exhumed) — byte-matching decompilations of both games with native ports — through a 3DS backend for its platform layer.
 
-**You need your own copy of the games (the GOG releases).** This repository holds no game data.
+**Bring your own game files.** You need your own copy of the games (the GOG releases); this repository holds no game data.
 
 ## What it is
 - **Top screen:** the game's 3D view (and conversations) at about twice the size, with stereoscopic depth from the 3D slider.
