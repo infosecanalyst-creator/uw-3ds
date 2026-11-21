@@ -415,7 +415,7 @@ void front_tick(void)
     static unsigned last_flush;
     uw_glue_tick();
     keyboard();
-    if (p3_frame() - last_flush > 120) { uw_journal_flush(); last_flush = p3_frame(); }
+    if (p3_frame() - last_flush > 120) { uw_journal_flush_async(); last_flush = p3_frame(); }   /* UW-07: I/O thread */
     if (opts_dirty && p3_frame() - opts_stamp > 180) opts_flush();
     {   /* UW-12: once per run into the game, tell the journal whose it is; a new character starts a new one */
         static int told;

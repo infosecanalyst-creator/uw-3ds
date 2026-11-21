@@ -887,6 +887,28 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
             d = svcGetSystemTick();
             acc[0] += b - a; acc[1] += c - b; acc[2] += d - c;
             frames++;
+            {
+                /* frame-time line, only with /3ds/<game>/debug.txt (checked once): every 300
+                   frames the frame-to-frame time (avg, longest: an SD read or write on this
+                   thread shows as a long frame) and the dashboard map's draw calls (UW-08) */
+                static int dbg = -1;
+                static uint64_t last_f, sum_f, max_f;
+                static int max_obj;
+                extern int map_objects;
+                if (dbg < 0) { struct stat sb; dbg = stat(UW3DS_ROOT "/debug.txt", &sb) == 0; }
+                if (dbg) {
+                    uint64_t now_f = svcGetSystemTick();
+                    if (last_f) { uint64_t df = now_f - last_f; sum_f += df; if (df > max_f) max_f = df; }
+                    last_f = now_f;
+                    if (map_objects > max_obj) max_obj = map_objects;
+                    if (frames % 300 == 0) {
+                        fprintf(stderr, PLAT_NAME ": frame: avg %.1f ms, max %.1f ms, draw %.1f ms, map draws max %d\n",
+                                sum_f / 300.0 / (SYSCLOCK_ARM11 / 1000.0), max_f / (SYSCLOCK_ARM11 / 1000.0),
+                                (d - c) / (SYSCLOCK_ARM11 / 1000.0), max_obj);
+                        sum_f = max_f = 0; max_obj = 0;
+                    }
+                }
+            }
             e = d;
             if (frames % 600 == 0) {         /* every 10 s: where the time goes */
                 extern volatile unsigned uw_passes;
@@ -925,6 +947,8 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         /* park every other thread (see p3_park_point), waiting up to a second for the game's */
         int i;
         extern void uw_journal_flush(void);
+        extern void uw_io_stop(void);
+        uw_io_stop();                       /* UW-07: the I/O thread finishes its read or write and ends */
         uw_journal_flush();                 /* before parking: the game can't be holding its lock then */
         park_req = 1;
         __dsb();

@@ -171,6 +171,13 @@ static int npeople, latest = -1;
 static FILE *jfile;
 static int jdirty;
 static char jchar[64];                 /* whose journal.txt this is: name|class|female (UW-12) */
+/* UW-07: the journal's new lines wait here (appended under the lock, no file call there); the
+   file is written outside the lock, by the I/O thread every two seconds (front_tick) or at once
+   by uw_journal_flush (HOME, exit). jio keeps two writers from interleaving. */
+static char *jpend;
+static size_t jpend_n, jpend_cap;
+static LightLock jio;
+static int jio_ready;
 
 static int person_of(int conv, int whoami, int item)
 {
@@ -200,7 +207,22 @@ static void journal_add(int conv, int whoami, int item, int who, const char *tex
     q->lines[q->n].who = (unsigned char)who;
     if (q->lines[q->n].text) q->n++;
     latest = p;
-    if (save && jfile) { fprintf(jfile, "%d|%d|%d|%d|%s\n", conv, whoami, item, who, text); jdirty = 1; }
+    if (save && jfile) {
+        char head[64];
+        size_t hn = (size_t)snprintf(head, sizeof head, "%d|%d|%d|%d|", conv, whoami, item, who), tn = strlen(text);
+        if (jpend_n + hn + tn + 1 > jpend_cap) {
+            size_t nc = jpend_cap ? jpend_cap : 4096;
+            char *nb;
+            while (nc < jpend_n + hn + tn + 1) nc *= 2;
+            nb = realloc(jpend, nc);
+            if (!nb) return;
+            jpend = nb; jpend_cap = nc;
+        }
+        memcpy(jpend + jpend_n, head, hn); jpend_n += hn;
+        memcpy(jpend + jpend_n, text, tn); jpend_n += tn;
+        jpend[jpend_n++] = '\n';
+        jdirty = 1;
+    }
 }
 
 int uw_journal_people(void) { return npeople; }
@@ -245,7 +267,9 @@ void uw_journal_open(void)
         fclose(f);
     }
     latest = -1;
+    if (!jio_ready) { LightLock_Init(&jio); jio_ready = 1; }
     jfile = fopen(UW3DS_HOME "/journal.txt", "a");
+    uw_io_start();
 }
 
 static void journal_forget(void)
@@ -270,11 +294,15 @@ int uw_journal_character(const char *name, int pclass, int female)
     char id[64];
     if (!name || !*name) return 0;
     snprintf(id, sizeof id, "%s|%d|%d", name, pclass, female);
+    if (!jio_ready) { LightLock_Init(&jio); jio_ready = 1; }
+    LightLock_Lock(&jio);                /* UW-07: no journal write on the I/O thread meanwhile */
     lock();
-    if (!strcmp(id, jchar)) { unlock(); return 0; }
+    if (!strcmp(id, jchar)) { unlock(); LightLock_Unlock(&jio); return 0; }
     if (jchar[0]) {
         char to[200];
         int k;
+        if (jfile && jpend_n) fwrite(jpend, 1, jpend_n, jfile);   /* the old character's last lines go in its file */
+        jpend_n = 0; jdirty = 0;
         if (jfile) { fclose(jfile); jfile = NULL; }
         for (k = 1; k < 1000; k++) {
             FILE *t;
@@ -290,14 +318,125 @@ int uw_journal_character(const char *name, int pclass, int female)
     snprintf(jchar, sizeof jchar, "%s", id);
     if (jfile) { fprintf(jfile, "#char|%s\n", id); fflush(jfile); }
     unlock();
+    LightLock_Unlock(&jio);
     return fresh;
 }
 
+/* Takes the pending lines under the lock (a pointer swap), then writes them without it. */
 void uw_journal_flush(void)
 {
+    char *buf;
+    size_t n;
+    if (!jio_ready) { LightLock_Init(&jio); jio_ready = 1; }
+    LightLock_Lock(&jio);
     lock();
-    if (jdirty && jfile) { fflush(jfile); jdirty = 0; }
+    buf = jpend; n = jpend_n;
+    if (!jdirty || !jfile) buf = NULL;
+    if (buf) { jpend = NULL; jpend_n = jpend_cap = 0; jdirty = 0; }
     unlock();
+    if (buf) {
+        if (n) fwrite(buf, 1, n, jfile);
+        fflush(jfile);
+        free(buf);
+    }
+    LightLock_Unlock(&jio);
+}
+
+/* ---- UW-07: the I/O thread ----
+   The dashboard map re-read the map's notes (every 3 s) and another level's map (every 5 s)
+   from SAVE0's LEV.ARK, and front_tick wrote the journal, on the main (screens) thread: an SD
+   card read or write in the middle of a frame. Those refreshes now run here, on the screens'
+   core below the screens' priority (it runs while they wait for the vertical blank); map.c
+   picks the result up when it is ready. A level picked by hand is still read at once, as
+   before, so the map never shows an empty frame. */
+static Thread io_th;
+static volatile int io_stop, io_flush_req, io_notes_req = -1, io_other_req = -1;
+static LightLock iolk;
+static struct uwnote io_notes[100];
+static int io_nnotes, io_notes_level = -1, io_notes_ready;
+static uint8_t io_other[64][64];
+static int io_other_ok, io_other_level = -1, io_other_ready;
+
+static void io_thread(void *arg)
+{
+    static struct uwnote nb[100];
+    static uint8_t ob[64][64];
+    (void)arg;
+    while (!io_stop) {
+        int l;
+        svcSleepThread(50000000LL);
+        if (io_stop) break;
+        if (io_flush_req) { io_flush_req = 0; uw_journal_flush(); }
+        if ((l = io_notes_req) >= 0) {
+            int n = uw_notes(l, nb, 100);
+            LightLock_Lock(&iolk);
+            memcpy(io_notes, nb, sizeof io_notes); io_nnotes = n; io_notes_level = l; io_notes_ready = 1;
+            io_notes_req = -1;
+            LightLock_Unlock(&iolk);
+        }
+        if ((l = io_other_req) >= 0) {
+            int ok = uw_level_automap(l, ob);
+            LightLock_Lock(&iolk);
+            memcpy(io_other, ob, sizeof io_other); io_other_ok = ok; io_other_level = l; io_other_ready = 1;
+            io_other_req = -1;
+            LightLock_Unlock(&iolk);
+        }
+    }
+}
+
+void uw_io_start(void)
+{
+    s32 prio = 0x30;
+    if (io_th) return;
+    LightLock_Init(&iolk);
+    svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
+    io_th = threadCreate(io_thread, NULL, 32 * 1024, prio + 2 > 0x3F ? 0x3F : prio + 2, 0, false);
+}
+
+void uw_io_stop(void)
+{
+    if (!io_th) return;
+    io_stop = 1;
+    threadJoin(io_th, U64_MAX);
+    threadFree(io_th);
+    io_th = NULL;
+}
+
+/* A journal write on the I/O thread (front_tick); without the thread, here. */
+void uw_journal_flush_async(void)
+{
+    if (io_th) io_flush_req = 1;
+    else uw_journal_flush();
+}
+
+void uw_notes_request(int level) { if (io_th) io_notes_req = level; }
+void uw_other_request(int level) { if (io_th) io_other_req = level; }
+int uw_io_async(void) { return io_th != NULL; }
+
+/* 1 and the notes when a read for this level has finished since the last call */
+int uw_notes_take(int level, struct uwnote *out, int max, int *n)
+{
+    int got = 0;
+    if (!io_th) return 0;
+    LightLock_Lock(&iolk);
+    if (io_notes_ready && io_notes_level == level) {
+        int k = io_nnotes < max ? io_nnotes : max;
+        memcpy(out, io_notes, (size_t)k * sizeof *out); *n = k; got = 1;
+    }
+    if (io_notes_ready) io_notes_ready = 0;
+    LightLock_Unlock(&iolk);
+    return got;
+}
+
+int uw_other_take(int level, uint8_t out[64][64], int *ok)
+{
+    int got = 0;
+    if (!io_th) return 0;
+    LightLock_Lock(&iolk);
+    if (io_other_ready && io_other_level == level) { memcpy(out, io_other, sizeof io_other); *ok = io_other_ok; got = 1; }
+    if (io_other_ready) io_other_ready = 0;
+    LightLock_Unlock(&iolk);
+    return got;
 }
 
 /* ---- the text from the game ---- */

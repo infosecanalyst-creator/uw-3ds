@@ -222,3 +222,20 @@ index 2ebdafe..fc99c4c 100644
  #include <unistd.h>
  
  void port_crash_handlers(void) {}
+diff --git a/runtime/port/sys/pit.c b/runtime/port/sys/pit.c
+index d62c4e7..de7c2f8 100644
+--- a/runtime/port/sys/pit.c
++++ b/runtime/port/sys/pit.c
+@@ -29,7 +29,11 @@ static int pit_thread(void *arg)
+     /* 18.2065 Hz: 1193182 / 65536 */
+     bios_next = start + hz * 65536 / 1193182;
+     for (;;) {
+-        plat_sleep_ns(500000);
++        /* 3DS (UW-06): 1 ms, not 0.5 ms. The thread sits above the game on the game's core, so
++           every wake-up takes that core from the game: 2000 a second cost it time for nothing,
++           as the ticks are counted from the elapsed time anyway. 1 ms is still a quarter of the
++           game clock's 3.9 ms tick. */
++        plat_sleep_ns(1000000);
+         now = plat_counter();
+         if (atomic_load(&paused)) {
+             /* the game's clock stands still: no AIL ticks, no BIOS ticks, no key repeat, and the

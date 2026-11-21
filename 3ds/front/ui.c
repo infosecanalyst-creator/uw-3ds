@@ -14,9 +14,17 @@ static int t_now, t_was, t_x, t_y, t_x0, t_y0;
    6 px is a drag, not a tap, so no button fires for it */
 static int drag_on, t_drag, t_ylast, t_dy;
 
+/* UW-09: measuring text (ui_text_width: the manual's paragraphs off screen, the log's and the
+   journal's lines, ui_text_fit's tries) parsed into the frame's glyph buffer too and used it up
+   on a long chapter or a long journal, so the text after it (headers, hints) was dropped.
+   Measuring now uses a scratch buffer of its own, emptied before each use (nothing in it is
+   ever drawn). */
+static C2D_TextBuf tbw;
+
 void ui_init(void)
 {
     tb = C2D_TextBufNew(16384);
+    tbw = C2D_TextBufNew(4096);
 }
 
 void ui_begin(void)
@@ -59,7 +67,9 @@ float ui_text_width(float size, const char *s)
 {
     C2D_Text t;
     float w, h;
-    if (!s || !*s || !C2D_TextParse(&t, tb, s)) return 0;
+    if (!s || !*s) return 0;
+    if (tbw) C2D_TextBufClear(tbw);
+    if (!C2D_TextParse(&t, tbw ? tbw : tb, s)) return 0;
     C2D_TextGetDimensions(&t, size, size, &w, &h);
     return w;
 }

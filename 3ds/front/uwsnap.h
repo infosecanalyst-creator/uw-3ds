@@ -73,5 +73,15 @@ struct uwnote { float x, y; char text[52]; };
 int uw_notes(int level, struct uwnote *out, int max);
 /* The explored map of another level from SAVE0's LEV.ARK (the current one is in the snapshot). */
 int uw_level_automap(int level, uint8_t out[64][64]);
+/* UW-07: the same reads on the I/O thread (glue.c). request: start a read (if the thread runs);
+   take: 1 and the result when a read for that level has finished. */
+void uw_io_start(void);
+void uw_io_stop(void);
+int uw_io_async(void);
+void uw_notes_request(int level);
+void uw_other_request(int level);
+int uw_notes_take(int level, struct uwnote *out, int max, int *n);
+int uw_other_take(int level, uint8_t out[64][64], int *ok);
+void uw_journal_flush_async(void);
 
 #endif

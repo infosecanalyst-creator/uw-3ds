@@ -20,6 +20,7 @@ static unsigned other_at;
 static struct uwnote notes[100];
 static int nnotes, notes_level = -1;
 static unsigned notes_at;
+int map_objects;                        /* UW-08: draw calls of the last map (debug.txt frame line) */
 
 void map_zoom(int d) { zoom += d; if (zoom < 0) zoom = 0; if (zoom > 3) zoom = 3; }
 int map_zoom_level(void) { return zoom; }
@@ -83,10 +84,16 @@ void map_draw(float rx, float ry, float rw, float rh)
     }
     level = view_level ? view_level : s->level;
     if (view_level) {
-        if (!other_ok || other_level != level || p3_frame() - other_at > 300) {
-            other_ok = uw_level_automap(level, other);
-            other_level = level;
-            other_at = p3_frame();
+        /* UW-07: a newly picked level is read at once; the 5-second refresh runs on the I/O thread */
+        if (!other_ok || other_level != level || !uw_io_async()) {
+            if (!other_ok || other_level != level || p3_frame() - other_at > 300) {
+                other_ok = uw_level_automap(level, other);
+                other_level = level;
+                other_at = p3_frame();
+            }
+        } else {
+            if (p3_frame() - other_at > 300) { uw_other_request(level); other_at = p3_frame(); }
+            uw_other_take(level, other, &other_ok);
         }
         if (!other_ok) {
             ui_textf(cx - 110, cy - 8, 0.5f, COL_DIM, "Level %d: nothing mapped yet.", level);
@@ -98,12 +105,65 @@ void map_draw(float rx, float ry, float rw, float rh)
         m = (uint8_t (*)[64])s->automap;
         px = s->px; py = s->py;
     }
-    if (notes_level != level || p3_frame() - notes_at > 180) {
-        nnotes = uw_notes(level, notes, 100);
-        notes_level = level;
-        notes_at = p3_frame();
+    if (notes_level != level || !uw_io_async()) {
+        if (notes_level != level || p3_frame() - notes_at > 180) {
+            nnotes = uw_notes(level, notes, 100);
+            notes_level = level;
+            notes_at = p3_frame();
+        }
+    } else {
+        /* UW-07: the 3-second refresh of the notes runs on the I/O thread */
+        if (p3_frame() - notes_at > 180) { uw_notes_request(level); notes_at = p3_frame(); }
+        uw_notes_take(level, notes, 100, &nnotes);
     }
-    /* the squares */
+    /* the squares. UW-08: drawn in runs so a fully explored level fits citro2d's vertex buffer
+       (one rect or line per square edge was ~30 vertices a square: a whole level at the smallest
+       zoom, twice with 3D on, ran past it and the rest of the frame was dropped). Floor squares of
+       one colour side by side are one rect; walls along a row (or, for the side walls, a column)
+       are one line. The pieces never overlap one another, so the pixels are the same as square by
+       square. */
+#define SQ_X0(x) (cx + ((x) - px) * sc)
+#define SQ_Y0(y) (cy - ((y) + 1 - py) * sc)
+#define SQ_VIS(x, y) (SQ_X0(x) >= rx && SQ_X0(x) + sc <= rx + rw && SQ_Y0(y) >= ry && SQ_Y0(y) + sc <= ry + rh)
+#define SQ_T(x, y) (m[y][x] & 0xF)
+#define SQ_BOXED(x, y) (SQ_T(x, y) == 1 || SQ_T(x, y) >= 6)          /* a square with a floor rect and walls */
+    map_objects = 0;
+    for (y = 0; y < 64; y++) {
+        int rs = -1;                    /* the floor run: first square, colour */
+        u32 rcol = 0;
+        int ts = -1, bs = -1;           /* the top / bottom wall runs */
+        for (x = 0; x <= 64; x++) {
+            int vis = x < 64 && SQ_T(x, y) >= 1 && SQ_T(x, y) <= 9 && SQ_VIS(x, y);
+            int boxed = vis && SQ_BOXED(x, y);
+            u32 col = 0;
+            int top = boxed && !seen(m, x, y + 1), bot = boxed && !seen(m, x, y - 1);
+            if (boxed) {
+                int c = m[y][x], tt = c & 0xF, terr = (c >> 4) & 3;
+                col = terr == 1 ? C_WATER : terr == 2 ? C_LAVA : tt >= 6 ? C_SLOPE : C_FLOOR;
+            }
+            if (rs >= 0 && (!boxed || col != rcol)) {
+                ui_rect(SQ_X0(rs), SQ_Y0(y), SQ_X0(x - 1) + sc - SQ_X0(rs), sc, rcol); map_objects++;
+                rs = -1;
+            }
+            if (boxed && rs < 0) { rs = x; rcol = col; }
+            if (ts >= 0 && !top) { line(SQ_X0(ts), SQ_Y0(y), SQ_X0(x - 1) + sc, SQ_Y0(y), wl, C_WALL); map_objects++; ts = -1; }
+            if (top && ts < 0) ts = x;
+            if (bs >= 0 && !bot) { line(SQ_X0(bs), SQ_Y0(y) + sc, SQ_X0(x - 1) + sc, SQ_Y0(y) + sc, wl, C_WALL); map_objects++; bs = -1; }
+            if (bot && bs < 0) bs = x;
+        }
+    }
+    for (x = 0; x < 64; x++) {
+        int ls = -1, rs2 = -1;          /* the left / right wall runs, bottom square first (y grows north) */
+        for (y = 0; y <= 64; y++) {
+            int boxed = y < 64 && SQ_T(x, y) >= 1 && SQ_T(x, y) <= 9 && SQ_VIS(x, y) && SQ_BOXED(x, y);
+            int lw = boxed && !seen(m, x - 1, y), rw2 = boxed && !seen(m, x + 1, y);
+            if (ls >= 0 && !lw) { line(SQ_X0(x), SQ_Y0(y - 1), SQ_X0(x), SQ_Y0(ls) + sc, wl, C_WALL); map_objects++; ls = -1; }
+            if (lw && ls < 0) ls = y;
+            if (rs2 >= 0 && !rw2) { line(SQ_X0(x) + sc, SQ_Y0(y - 1), SQ_X0(x) + sc, SQ_Y0(rs2) + sc, wl, C_WALL); map_objects++; rs2 = -1; }
+            if (rw2 && rs2 < 0) rs2 = y;
+        }
+    }
+    /* the diagonals, the slopes' arrows and the marks, square by square */
     for (y = 0; y < 64; y++)
         for (x = 0; x < 64; x++) {
             int c = m[y][x], t = c & 0xF, terr = (c >> 4) & 3, mark = c >> 6;
@@ -113,12 +173,11 @@ void map_draw(float rx, float ry, float rw, float rh)
             if (x0 < rx || x1 > rx + rw || y0 < ry || y1 > ry + rh) continue;
             col = terr == 1 ? C_WATER : terr == 2 ? C_LAVA : t >= 6 ? C_SLOPE : C_FLOOR;
             switch (t) {
-            case 2: tri(x1, y0, x1, y1, x0, y1, col); line(x0, y1, x1, y0, wl, C_WALL); break;   /* SE open */
-            case 3: tri(x0, y0, x0, y1, x1, y1, col); line(x0, y0, x1, y1, wl, C_WALL); break;   /* SW */
-            case 4: tri(x0, y0, x1, y0, x1, y1, col); line(x0, y0, x1, y1, wl, C_WALL); break;   /* NE */
-            case 5: tri(x1, y0, x0, y0, x0, y1, col); line(x0, y1, x1, y0, wl, C_WALL); break;   /* NW */
+            case 2: tri(x1, y0, x1, y1, x0, y1, col); line(x0, y1, x1, y0, wl, C_WALL); map_objects += 2; break;   /* SE open */
+            case 3: tri(x0, y0, x0, y1, x1, y1, col); line(x0, y0, x1, y1, wl, C_WALL); map_objects += 2; break;   /* SW */
+            case 4: tri(x0, y0, x1, y0, x1, y1, col); line(x0, y0, x1, y1, wl, C_WALL); map_objects += 2; break;   /* NE */
+            case 5: tri(x1, y0, x0, y0, x0, y1, col); line(x0, y1, x1, y0, wl, C_WALL); map_objects += 2; break;   /* NW */
             default:
-                ui_rect(x0, y0, sc, sc, col);
                 if (t >= 6 && sc >= 6) {
                     /* a slope: a small arrow uphill */
                     float mx = x0 + sc / 2, my = y0 + sc / 2, a = sc * 0.3f;
@@ -127,21 +186,21 @@ void map_draw(float rx, float ry, float rw, float rh)
                     else if (t == 7) tri(mx, my + a, mx - a, my - a, mx + a, my - a, k);
                     else if (t == 8) tri(mx + a, my, mx - a, my - a, mx - a, my + a, k);
                     else tri(mx - a, my, mx + a, my - a, mx + a, my + a, k);
+                    map_objects++;
                 }
             }
-            /* the walls: the edges toward squares not seen as open */
-            if (t == 1 || t >= 6) {
-                if (!seen(m, x, y + 1)) line(x0, y0, x1, y0, wl, C_WALL);
-                if (!seen(m, x, y - 1)) line(x0, y1, x1, y1, wl, C_WALL);
-                if (!seen(m, x - 1, y)) line(x0, y0, x0, y1, wl, C_WALL);
-                if (!seen(m, x + 1, y)) line(x1, y0, x1, y1, wl, C_WALL);
-            }
-            if (mark == 1) ui_rect(x0 + sc * 0.2f, y0 + sc * 0.2f, sc * 0.6f, sc * 0.6f, C_DOOR);
-            else if (mark == 2) ui_rect(x0 + sc * 0.35f, y0 + sc * 0.35f, sc * 0.3f, sc * 0.3f, C_THING);
+            if (mark == 1) { ui_rect(x0 + sc * 0.2f, y0 + sc * 0.2f, sc * 0.6f, sc * 0.6f, C_DOOR); map_objects++; }
+            else if (mark == 2) { ui_rect(x0 + sc * 0.35f, y0 + sc * 0.35f, sc * 0.3f, sc * 0.3f, C_THING); map_objects++; }
             else if (mark == 3) {
                 for (i = 0; i < 3; i++) ui_rect(x0 + sc * 0.15f, y0 + sc * (0.2f + i * 0.25f), sc * 0.7f, sc * 0.12f, C_STAIRS);
+                map_objects += 3;
             }
         }
+#undef SQ_X0
+#undef SQ_Y0
+#undef SQ_VIS
+#undef SQ_T
+#undef SQ_BOXED
     /* the notes written on the game's map */
     for (i = 0; i < nnotes; i++) {
         float nx = cx + (notes[i].x - px) * sc, ny = cy - (notes[i].y - py) * sc;
