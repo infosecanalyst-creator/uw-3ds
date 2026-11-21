@@ -27,7 +27,7 @@ index c223eea..60b2d98 100644
  
  unsigned char *port_frame_alloc(void)
 diff --git a/runtime/port/sound/audio.c b/runtime/port/sound/audio.c
-index 53f3de0..471e039 100644
+index 53f3de0..4ac5ef5 100644
 --- a/runtime/port/sound/audio.c
 +++ b/runtime/port/sound/audio.c
 @@ -27,6 +27,19 @@
@@ -67,7 +67,20 @@ index 53f3de0..471e039 100644
  }
  
  /* 1 if this build has the MT-32 emulator and dir (a folder, or a file in it) holds a CM-32L or an
-@@ -426,3 +447,132 @@ void audio_render_to(uint64_t t_us)
+@@ -374,6 +395,12 @@ void audio_render_to(uint64_t t_us)
+     }
+     while (rendered < target) {
+         int n = (int)(target - rendered > 512 ? 512 : target - rendered), i, k;
++#ifdef __3DS__
++        /* leaving the game: stop here, between blocks. A long catch-up (the synthesizer far
++           behind) reached no other stopping point for seconds, and the process ended, taking
++           this thread's stack away, with OPL3_Generate still writing to it */
++        { extern void p3_park_point(void); p3_park_point(); }
++#endif
+         memset(out, 0, sizeof out);
+ #ifdef AUDIO_HAVE_OPL
+         for (k = 0; k < nchips; k++) OPL3_GenerateStream(&chip[k], fm[k], (uint32_t)n);
+@@ -426,3 +453,132 @@ void audio_render_to(uint64_t t_us)
          rendered += (uint64_t)n;
      }
  }
