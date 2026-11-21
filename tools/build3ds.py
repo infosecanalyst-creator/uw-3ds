@@ -25,6 +25,14 @@ TOOLS = os.path.join(DKP, 'tools', 'bin')
 ARCH = ['-march=armv6k', '-mtune=mpcore', '-mfloat-abi=hard', '-mtp=soft', '-mword-relocations']
 LTO = [] if os.environ.get('NO_LTO') else ['-flto=auto']
 LTO_DEFAULT = r'^upstream/(uw1|uw2)/src/(?!port/mem)|^upstream/exhume/'
+# Port version (git describe of uw-3ds), shown at the end of the manual's first chapter
+def port_version():
+    try:
+        return subprocess.run(['git', '-c', 'safe.directory=*', '-C', TOP, 'describe', '--always', '--dirty'],
+                              capture_output=True, text=True, timeout=30).stdout.strip() or 'unknown'
+    except Exception:
+        return 'unknown'
+PORT_VERSION = os.environ.get('PORT_VERSION') or port_version()
 COMMON = ARCH + ['-D__3DS__', '-DPORT_FRAME_SINGLE', '-ffunction-sections', '-fno-strict-aliasing',
                  '-fsigned-char', '-I', os.path.join(CTRU, 'include'), '-I', os.path.join(PORTLIBS, 'include')]
 
@@ -113,7 +121,7 @@ def main():
         '-Wall', '-Wno-comment', '-Wno-unused-function', '-Wno-unknown-pragmas', '-Wno-pragma-pack'] + \
         ['-I', os.path.join(ours, 'front'), '-I', os.path.join(ours, 'platform')] + \
         [f for d in C['inc_dirs'] for f in ('-I', d)] + [f for d in C['quote'] for f in ('-iquote', d)] + \
-        [f'-DGAME_{a.game.upper()}=1']
+        [f'-DGAME_{a.game.upper()}=1', f'-DPORT_VERSION="{PORT_VERSION}"']
     nuked = os.path.join(TOP, 'vendor', 'nuked-opl3')
     jobs = []
     for p in C['game_c']:

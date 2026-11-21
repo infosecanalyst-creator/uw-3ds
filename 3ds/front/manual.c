@@ -7,6 +7,9 @@
 #include "plat3ds.h"
 #include "ui.h"
 #include "front.h"
+#ifndef PORT_VERSION
+#define PORT_VERSION "unknown"
+#endif
 
 #define MAXCH 40
 static char *book;
@@ -29,12 +32,23 @@ void manual_load(void)
     fseek(f, 0, SEEK_END);
     n = ftell(f);
     fseek(f, 0, SEEK_SET);
-    book = malloc((size_t)n + 1);
+    book = malloc((size_t)n + 1 + 64);   /* + room for the build line */
     if (!book) { fclose(f); return; }
     n = (long)fread(book, 1, (size_t)n, f);
     book[n] = 0;
     fclose(f);
     subst(book);
+    {   /* the port version (git describe of uw-3ds) at the end of the first chapter */
+        static const char ver[] = "\nPort build: " PORT_VERSION "\n";
+        char *second = strstr(book, "\n# ");
+        size_t len = sizeof ver - 1;
+        if (len <= 64) {
+            if (!second) second = book + n;
+            memmove(second + len, second, (size_t)(book + n - second) + 1);
+            memcpy(second, ver, len);
+            n += (long)len;
+        }
+    }
     /* each chapter ends where the next one's "# " line starts */
     for (p = book; (p = strstr(p, "\n# ")) != NULL; p += 1) *p = 0;
     for (p = book; p < book + n && nch < MAXCH; p += strlen(p) + 1) {
