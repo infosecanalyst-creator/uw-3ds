@@ -108,6 +108,13 @@ int uw_request_restore(int slot)
     return 1;
 }
 
+int uw_request_restore_prev(int slot)
+{
+    if (req || !safe) return 0;
+    req_slot = slot; req = 3;
+    return 1;
+}
+
 int uwglue_take_request(int *slot)
 {
     int r = req;
@@ -644,6 +651,40 @@ static void rm_tree(const char *path)
         rmdir(path);
     } else
         remove(path);
+}
+
+/* Which of slot N's two saves are on the card (main thread, when the port menu opens). */
+int uw_slot_state(int slot)
+{
+    char d[8], p[512], pb[520];
+    struct stat st;
+    int r = 0;
+    snprintf(d, sizeof d, "SAVE%d", slot);
+    if (plat_resolve(d, PLAT_READ, p, sizeof p)) return 0;
+    snprintf(pb, sizeof pb, "%s.BAK", p);
+    if (stat(p, &st) == 0 && S_ISDIR(st.st_mode)) r |= 1;
+    if (stat(pb, &st) == 0 && S_ISDIR(st.st_mode)) r |= 2;
+    return r;
+}
+
+/* "Load the save before it": SAVEn and SAVEn.BAK change places (three renames, nothing is
+   deleted), then the game restores slot n as usual. 0 on success; on a failure the newest save
+   is put back where it was. Game thread, at the point where a restore is safe. */
+int uwglue_swap_bak(int slot)
+{
+    char d[8], p[512], pb[520], pt[520];
+    struct stat st;
+    snprintf(d, sizeof d, "SAVE%d", slot);
+    if (plat_resolve(d, PLAT_READ, p, sizeof p)) return -1;
+    snprintf(pb, sizeof pb, "%s.BAK", p);
+    snprintf(pt, sizeof pt, "%s.TMP", p);
+    if (stat(pb, &st) != 0) return -1;
+    rm_tree(pt);                               /* a leftover of an interrupted swap */
+    if (stat(p, &st) != 0) return rename(pb, p) == 0 ? 0 : -1;   /* only the older one is left */
+    if (rename(p, pt) != 0) return -1;
+    if (rename(pb, p) != 0) { rename(pt, p); return -1; }
+    if (rename(pt, pb) != 0) return 0;         /* the older save is in place; the newer stays as .TMP */
+    return 0;
 }
 
 int uwglue_swap_slot(int from, int to)

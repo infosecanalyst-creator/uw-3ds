@@ -7,7 +7,7 @@ A dual-screen 3DS port of *Ultima Underworld: The Stygian Abyss* and *Ultima Und
 ## What it is
 - **Top screen:** the game's 3D view (and conversations) at about twice the size, with stereoscopic depth from the 3D slider.
 - **Bottom screen:** the whole game screen, played with the stylus as the mouse (hold R for the right button), above tabs for dashboard pages: live Map (from the game's own automap, with your map notes), Status, message Log, conversation Journal and Spells (your spell book and hotkeys).
-- **Controls:** Circle Pad walks and turns, C-Stick slides and looks, L attacks, A uses (confirm), X looks, Y the map, ZR jumps, B goes back, D-pad casts spell hotkeys, SELECT changes the page, ZL swaps the screens, START opens the port menu (quicksave/quickload, hotkeys, map, manual, settings, an A/B swap, exit).
+- **Controls:** Circle Pad walks and turns, C-Stick slides and looks, L attacks, A uses (confirm), X looks, Y the map, ZR jumps, B goes back, D-pad casts spell hotkeys, SELECT changes the page, ZL swaps the screens, START opens the port menu (resume, quicksave, manual, options, quickload with a confirm, exit; options holds spell hotkeys, map, A/B swap, left hand and the game's settings).
 - The system keyboard for typed text (character name, mantras, conversation answers).
 - A built-in manual.
 - Underworld Exhumed's enhancements and bug fixes, on by default and switchable in Settings.
@@ -32,7 +32,7 @@ python3 tools/build3ds.py uw2
 ## Installing
 Copy `uw1-3ds.3dsx` directly to `/3ds/` (as `/3ds/uw1-3ds.3dsx`) and your UW1 folder (UW.EXE, DATA, CRIT, CUTS, SOUND) to `/3ds/uw1/game/`; likewise `uw2-3ds.3dsx` to `/3ds/uw2-3ds.3dsx` and UW2 to `/3ds/uw2/game/`. Saves and settings go to `/3ds/uwN/home/`, the log to `/3ds/uwN/log.txt`. Sound needs `/3ds/dspfirm.cdc`.
 
-Quicksave (port menu, slot 4) is written to a scratch slot and swapped in, so a failed one keeps the old. Quit and HOME > Close quicksave first; if the game cannot save, Quit asks "Exit anyway?". A new character starts a new journal (the old one is kept as `journal-N.txt`). `3ds.cfg` is written only when a setting changed.
+Quicksave (port menu, slot 4) is written to a scratch slot and swapped in, so a failed one keeps the old. Quickload asks first; slot 4 keeps the save it last replaced (`SAVE4.BAK`), and Quickload > "Load the save before it" brings it back. Quit and HOME > Close quicksave first; if the game cannot save, Quit asks "Exit anyway?". A new character starts a new journal (the old one is kept as `journal-N.txt`). `3ds.cfg` is written only when a setting changed.
 
 ## Licences
 The port's own code (`3ds/`, `tools/`, `patches/`) is MIT. Underworld Exhumed's own work is MIT; its decompiled code derives from the games, whose copyright is Electronic Arts' (see its NOTICE). Nuked OPL3 (c) Nuke.YKT is LGPL-2.1: it is fetched, not committed, but it is linked into the built `.3dsx` files, so [`THIRD_PARTY_NOTICES.txt`](THIRD_PARTY_NOTICES.txt) carries its notice and how to rebuild with a modified copy, and the licence text is in [`licenses/LGPL-2.1-Nuked-OPL3.txt`](licenses/LGPL-2.1-Nuked-OPL3.txt) (both also go to the `builds` branch with the binaries). Ultima Underworld is a trademark of Electronic Arts. Not affiliated with or endorsed by the rights holders.

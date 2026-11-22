@@ -158,11 +158,13 @@ static void run_request(void)
 #endif
         uw_last_save_ok = ok;
         uwglue_result(ok ? "Quicksaved." : "Quicksave FAILED - is the SD card full?");
+    } else if (r == 3 && uwglue_swap_bak(slot) != 0) {
+        uwglue_result("The older save could not be loaded.");
     } else {
         DoSaveRest(1, slot);
         RightButtonThing = IMODE_DEFAULT;
         punt_fightmode();
-        uwglue_result("Quickloaded.");
+        uwglue_result(r == 3 ? "Loaded the save before." : "Quickloaded.");
     }
     uw_busy = 0;
 }

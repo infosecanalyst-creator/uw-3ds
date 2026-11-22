@@ -11,9 +11,11 @@
 #if defined(GAME_UW2)
 #define UW3DS_GAME "uw2"
 #define UW3DS_TITLE "Ultima Underworld II"
+#define UW3DS_PLACE "the game"                 /* "once you are in ...": UW2 starts in the castle, not the Abyss */
 #else
 #define UW3DS_GAME "uw1"
 #define UW3DS_TITLE "Ultima Underworld"
+#define UW3DS_PLACE "the Abyss"
 #endif
 #define UW3DS_ROOT "/3ds/" UW3DS_GAME          /* the app's folder on the SD card */
 #define UW3DS_HOME UW3DS_ROOT "/home"          /* saved games and settings */

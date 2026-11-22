@@ -64,6 +64,8 @@ int uw_journal_character(const char *name, int pclass, int female);   /* UW-12: 
 int uw_request_save(int slot, const char *desc);
 int uw_request_pending(void);          /* a save/restore request not yet taken by the game */
 int uw_request_restore(int slot);
+int uw_request_restore_prev(int slot);  /* the save that slot's last save replaced (SAVEn.BAK) */
+int uw_slot_state(int slot);            /* bit 0: SAVEn is on the card; bit 1: SAVEn.BAK is */
 const char *uw_request_result(void);    /* the last request's outcome, for a message; NULL none */
 int uw_can_save(void);
 

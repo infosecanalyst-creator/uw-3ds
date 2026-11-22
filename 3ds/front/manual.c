@@ -1,6 +1,7 @@
 /* manual.c: the built-in manual (romfs:/manual/uw.txt), shown on the top screen a chapter at a
    time. Chapters start with "# Title"; the rest is paragraphs. "/3ds/uw1" in the text becomes the
-   running game's folder. */
+   running game's folder. One file serves both games: a line that starts with "[1]" is kept only
+   in Underworld 1, "[2]" only in Underworld II (the mark is taken off), every other line in both. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,30 @@ static void subst(char *s)
     while ((p = strstr(p, "/3ds/uw1")) != NULL) { memcpy(p, UW3DS_ROOT, 8); p += 8; }
 }
 
+/* Keep the lines for this game: "[1]..." and "[2]..." are for one game only. In place; returns
+   the new length. */
+static long per_game(char *s, long n)
+{
+#ifdef GAME_UW2
+    const char mine = '2';
+#else
+    const char mine = '1';
+#endif
+    char *in = s, *out = s, *end = s + n;
+    while (in < end) {
+        char *e = memchr(in, '\n', (size_t)(end - in));
+        size_t len = e ? (size_t)(e - in) + 1 : (size_t)(end - in);
+        if (len >= 3 && in[0] == '[' && (in[1] == '1' || in[1] == '2') && in[2] == ']') {
+            if (in[1] == mine) { memmove(out, in + 3, len - 3); out += len - 3; }
+        } else {
+            memmove(out, in, len); out += len;
+        }
+        in += len;
+    }
+    *out = 0;
+    return (long)(out - s);
+}
+
 void manual_load(void)
 {
     FILE *f = fopen("romfs:/manual/uw.txt", "rb");
@@ -38,6 +63,7 @@ void manual_load(void)
     n = (long)fread(book, 1, (size_t)n, f);
     book[n] = 0;
     fclose(f);
+    n = per_game(book, n);
     subst(book);
     {   /* the port version (git describe of uw-3ds) at the end of the first chapter */
         static const char ver[] = "\nPort build: " PORT_VERSION "\n";

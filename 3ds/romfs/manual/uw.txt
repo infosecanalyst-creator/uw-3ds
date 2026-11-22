@@ -1,5 +1,6 @@
 # Welcome
-This is the Stygian Abyss on your New 3DS: the original game, decompiled byte for byte by the Underworld Exhumed project, running natively with a 3DS front end.
+[1]This is Ultima Underworld: The Stygian Abyss on your New 3DS: the original game, decompiled byte for byte by the Underworld Exhumed project, running natively with a 3DS front end.
+[2]This is Ultima Underworld II: Labyrinth of Worlds on your New 3DS: the original game, decompiled byte for byte by the Underworld Exhumed project, running natively with a 3DS front end.
 
 The top screen is the game's 3D view, about twice its size, in stereoscopic 3D when you turn up the 3D slider. When you talk to someone, the conversation shows there too.
 
@@ -7,7 +8,7 @@ The bottom screen is the whole game screen. Play it with the stylus exactly as y
 
 Under the game is a row of tabs: Game, Map, Status, Log, Journal and Spells. The other tabs show a dashboard page on the bottom screen in place of the game; tap Game (or press SELECT) to go back. START opens the port menu.
 
-In this manual: the Circle Pad or C-stick scrolls (or drag the stylus up and down on the touch screen), the D-pad moves between the sections on the bottom screen, L and R go to the previous or next section, and B or START closes it.
+In this manual: the Circle Pad or C-stick scrolls (or drag the stylus up and down on the touch screen), the D-pad moves between the sections on the bottom screen, L and R go to the previous or next section, and B or START closes it and goes back to the game.
 
 # Buttons
 Circle Pad: walk forward (push all the way to run) and back, and step sideways (strafe) left and right.
@@ -29,12 +30,14 @@ Many actions work on whatever is under the game's cursor. The cursor stays where
 
 When you walk with the circle pad after touching the screen, the cursor goes back to the centre of the view, so A and X act on what is straight ahead of you.
 
+Small things: the game's own screen keeps its original size, so the runes, the icons and the inventory squares are small. Use the stylus, not a finger, and hold it still as you tap. Or press ZL: the game fills the top screen and the touch screen becomes a touchpad, so you slide the cursor onto a small thing and tap to click it. For a thing in the world straight ahead, A (use) and X (look) need no tapping at all.
+
 # Page: Map
 A live map of the level you are on, drawn from the game's own record of the squares you have seen. The arrow is you; it turns as you turn.
 
 Stairs, doors and other things you have seen are marked. Notes you write on the game's map (Y) appear here as small gold pins.
 
-In the port menu you can zoom the map and look at other levels.
+In the port menu, under OPTIONS, MAP lets you zoom the map and look at other levels.
 
 # Page: Status
 Your vitality, mana, level and experience, how hungry and tired you are, any poison, your light, and the spells working on you.
@@ -45,38 +48,46 @@ Every message the scroll at the bottom of the game screen has shown, so nothing 
 # Page: Journal
 Every conversation you have had, by the person you spoke to: what they said and what you answered. Reread clues instead of writing them on paper. The journal is kept with your saved games, in journal.txt. When you start a new character the old journal is moved aside as journal-1.txt (then journal-2.txt and so on) and a fresh one begins. Like the Log and the Spells page, it scrolls by dragging the stylus.
 
-# Page: Spells
-Your spell book: every spell whose runes you have learned, with its runes, and which D-pad direction it is on.
-
 # Magic
+The Spells page is your spell book: every spell whose runes you have learned, with its runes, and which D-pad direction it is on.
+
 To cast a spell normally, tap runes in your rune bag to put them on the shelf, then tap the shelf.
 
-Spell hotkeys: open the port menu, choose Spell hotkeys, tap a spell from your book and then tap the D-pad direction to put it on. In play, press that direction to cast it at once. A spell whose runes you do not all have is refused with a sound.
+Spell hotkeys: open the port menu, choose OPTIONS, then SPELL HOTKEYS, tap a spell from your book and then tap the D-pad direction to put it on. In play, press that direction to cast it at once. A spell whose runes you do not all have is refused with a sound.
 
-The Spells page lists every hotkey.
+The D-pad casts only once you are in the game; on the title and in the menus it does nothing.
 
 # Saving
-Quicksave and Quickload are in the port menu. They use the game's own save slot 4, so they also show in the game's own Save and Restore screens.
+QUICKSAVE and QUICKLOAD are in the port menu. They use the game's own save slot 4, so the save also shows in the game's own Save and Restore screens, and on the title's load list when you start the game again.
+
+QUICKLOAD asks first ("Load the last save in slot 4?", NO is in focus), because everything you did since that save is lost. It is greyed out until slot 4 holds a save.
+
+EXIT GAME and closing the game from the HOME menu also save to slot 4. So that one save never wipes out the only other one, slot 4 keeps the save it last replaced: on the QUICKLOAD page, LOAD THE SAVE BEFORE IT brings that older one back (the two change places, so you can switch back the same way). It is one older save, not a history: for a save you want to keep for good, use the game's own Save screen (Options, the top icon on the left of the game screen) and slots 1 to 3, which the port never writes to.
 
 A quicksave is written to a scratch slot first and swapped into slot 4 only when it is complete, so a failed quicksave (for example a full SD card) never costs you the old one. The game says "Quicksave FAILED - is the SD card full?" and never says it saved when it did not. The game cannot save while a panel is open or while you hold an item on the cursor; put the item down and try again.
 
-Quit in the port menu quicksaves first, then leaves. If it cannot save it shows "! Not saved" with the reason (the quicksave failed, or you cannot save just now) and asks "Exit anyway?": NO goes back to the game. It never leaves silently after a failed save. Closing the game from the HOME menu (HOME, then Close) does the same quicksave first, for a few seconds at most. Pressing HOME alone only pauses the game; it saves nothing by itself.
+EXIT GAME asks "Leave the game?" (NO is in focus), then quicksaves, then leaves. If it cannot save it shows "! Not saved" with the reason (the quicksave failed, or you cannot save just now) and asks "Exit anyway?": NO goes back to the game. It never leaves silently after a failed save. Closing the game from the HOME menu (HOME, then Close) does the same quicksave first, for a few seconds at most. Pressing HOME alone only pauses the game; it saves nothing by itself.
 
 Closing the 3DS lid pauses the game.
 
 # The port menu
-START opens it. The game waits while it is open. Tap a button, or move the gold highlight with the D-pad and press A.
-Resume: back to the game.
-Quicksave, Quickload: the game's slot 4.
-Spell hotkeys: put spells on the D-pad.
-Map: zoom in and out, and look at other levels.
-Manual: this book.
-A/B and Left hand: A/B swaps which of the two confirms. Left hand: on swaps the D-pad with the face buttons: Y is up, A is right, B is down, X is left, and the reverse. Your choice is kept.
-Settings: the port's settings: sound, the enhancements and fixes.
-Quit: quicksave to slot 4, then leave the game (asks first if the save failed).
+START opens it. The game waits while it is open. Tap a button, or move the gold highlight with the D-pad and press A. B goes back one page; START closes the menu.
+RESUME: back to the game.
+QUICKSAVE (SLOT 4): save now.
+MANUAL: this book.
+OPTIONS: the page below.
+QUICKLOAD (SLOT 4): asks, then loads the last save in slot 4, or the one before it.
+EXIT GAME: asks, quicksaves to slot 4, then leaves the game (asks again if the save failed).
+
+OPTIONS holds the things you set once:
+SPELL HOTKEYS: put spells on the D-pad.
+MAP: zoom in and out, and look at other levels.
+A/B: swaps which of the two confirms.
+LEFT HAND: ON swaps the D-pad with the face buttons: Y is up, A is right, B is down, X is left, and the reverse. Hints on the screen then name the buttons you really press. Your choice is kept.
+GAME SETTINGS: the game's own settings screen: sound, the enhancements and the fixes. START or SELECT closes it.
 
 # Enhancements and fixes
-These start turned on. You can turn any of them off in Settings, under Enhancements.
+These start turned on. You can turn any of them off in OPTIONS, GAME SETTINGS, under Enhancements.
 
 Modern keys and rune keys: what lets the 3DS buttons work. Leave them on.
 Tidy objects: fixes the original's "Problems in object list" bug, which could lose items.
@@ -87,14 +98,16 @@ Fast panels and wrap menus: small conveniences.
 Wide pitch (look further up and down) and free heading (sliding along a wall does not turn you) are off, as in the original; turn them on if you like.
 
 # Your game files
-The port needs your own copy of the game (the GOG release). Copy the game's folder, the one that holds UW.EXE, DATA, CRIT, CUTS and SOUND, to the SD card as /3ds/uw1/game. GOG's game.gog CD image works too.
+[1]The port needs your own copy of the game (the GOG release). Copy the game's folder, the one that holds UW.EXE, DATA, CRIT, CUTS and SOUND, to the SD card as /3ds/uw1/game. GOG's game.gog CD image works too.
+[2]The port needs your own copy of the game (the GOG release). Copy the game's folder, the one that holds UW2.EXE, DATA, CRIT, CUTS and SOUND, to the SD card as /3ds/uw1/game. GOG's game.gog CD image works too.
 
 Saved games and settings are kept in /3ds/uw1/home. The settings file (3ds.cfg) is written only when something changed (when you close the menu, after 3 seconds without input, and on exit), through a temporary file. The log of the last run is /3ds/uw1/log.txt.
 
-The program is /3ds/uw1-3ds.3dsx, directly in /3ds (for Underworld II, /3ds/uw2-3ds.3dsx and the folders /3ds/uw2/...). The port's build number is shown at the end of this manual.
+The program is /3ds/uw1-3ds.3dsx, directly in /3ds. The port's build number is shown at the end of the Welcome section.
 
 # Credits
-The game: Ultima Underworld, Blue Sky Productions and Origin Systems, 1992. Copyright Electronic Arts. Bring your own copy.
+[1]The game: Ultima Underworld: The Stygian Abyss, Blue Sky Productions and Origin Systems, 1992. Copyright Electronic Arts. Bring your own copy.
+[2]The game: Ultima Underworld II: Labyrinth of Worlds, LookingGlass Technologies and Origin Systems, 1993. Copyright Electronic Arts. Bring your own copy.
 
 Underworld Exhumed: the decompilation and the native port, by abedegno and contributors, MIT licence.
 
