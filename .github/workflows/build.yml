@@ -50,5 +50,5 @@ jobs:
           git config user.name "build-bot"; git config user.email "build-bot@users.noreply.github.com"
           git add -A; git commit -qm "build of ${GITHUB_SHA}"
           # main publishes to `builds` (what gets installed); other branches to builds-<branch>
-          dest=builds; [ "$GITHUB_REF_NAME" = main ] || dest="builds-${GITHUB_REF_NAME//\//-}"
+          dest=builds; [ "$GITHUB_REF_NAME" = main ] || dest="builds-$(echo "$GITHUB_REF_NAME" | tr / -)"   # POSIX sh: this job runs under sh
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:"$dest"
