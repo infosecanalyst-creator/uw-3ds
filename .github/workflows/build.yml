@@ -3,7 +3,7 @@ name: build-3dsx
 # (3dsx + build log), so they can be fetched and installed over Wi-Fi without a PC build.
 on:
   push:
-    branches: ["**", "!builds"]
+    branches: ["**", "!builds", "!builds-*"]
   workflow_dispatch:
 permissions:
   contents: write
@@ -49,4 +49,6 @@ jobs:
           git init -q -b builds
           git config user.name "build-bot"; git config user.email "build-bot@users.noreply.github.com"
           git add -A; git commit -qm "build of ${GITHUB_SHA}"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" builds
+          # main publishes to `builds` (what gets installed); other branches to builds-<branch>
+          dest=builds; [ "$GITHUB_REF_NAME" = main ] || dest="builds-${GITHUB_REF_NAME//\//-}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:"$dest"
