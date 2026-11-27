@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-22
+## 2026-11-21
 
 - QUICKLOAD asks first ("Load the last save in slot 4?", NO in focus) and is greyed out until slot 4 holds a save. It no longer sits beside QUICKSAVE.
 - Slot 4 keeps the save it last replaced: QUICKLOAD > LOAD THE SAVE BEFORE IT brings it back (an EXIT GAME or HOME save no longer wipes out your only quicksave).
@@ -12,9 +12,6 @@
 - Left hand / A-B swap: the "Port menu open" hint names the button that really goes back.
 - First time in the dungeon: a one-time tip on the top strip.
 - EXIT GAME: buttons do nothing while the exit save is running (START there could leave the menu half-done).
-
-## 2026-11-21
-
 - Leaving the game: the music synthesizer now stops between blocks, so it can no longer still be working when the program ends (a possible crash right after the exit save).
 - Manual: the text no longer scrolls past its last line to an empty page.
 - The game stays smooth while the map, notes and journal are saved or loaded: that file work now happens off the screen thread, and the map is stored in runs (smaller, faster).
