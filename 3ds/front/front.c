@@ -2,10 +2,13 @@
    rune-keys enhancements), the spell hotkeys, the screens' layout and the port menu (START),
    which pauses the game.
 
-   Layout: while you explore (and talk), the top screen is the game's 3D view, about twice its
-   size, with stereoscopic depth from the 3D slider. The bottom screen is the whole game screen,
-   played with the stylus as the mouse (inventory, icons, runes, the scroll, the small view to
-   tap things in the world), above a strip of tabs: Game, Map, Status, Log, Journal, Spells. The
+   Layout: while you explore, the top screen is the game's 3D view alone, as tall as the screen,
+   with stereoscopic depth from the 3D slider. The bottom screen is the whole game screen,
+   played with the stylus as the mouse (inventory, icons, runes, the scroll); where its small 3D
+   view would be, the port draws a pointer pad: slide on it to move the game's pointer inside
+   the view (seen on the top screen), tap to click. So the view is on one screen only. While you
+   talk, the game's whole screen is on the bottom as it is and the top shows the view in a frame.
+   Under the game is a strip of tabs: Game, Map, Status, Log, Journal, Spells. The
    other tabs swap the dashboard's pages in for the game on the bottom screen; SELECT steps
    through them. Before you are in the Abyss (the menus, character creation) the game fills the
    bottom screen and the top screen shows the title.
@@ -45,6 +48,7 @@ static int pick_spell = -1, pick_scroll;
 static char toast[96];
 static unsigned toast_until;
 static int moved_since_touch;
+static int pad_touch;                   /* the stylus is down on the pointer pad (its edge lights up) */
 static int select_used;
 static int lefty;                       /* Settings: left-handed play, the D-pad and A/B/X/Y swap roles */
 static int tip_seen;                    /* the first-steps tip was shown once (kept in 3ds.cfg) */
@@ -78,6 +82,14 @@ const char *front_key_name(unsigned k)
 #define VIEW_W 172
 #define VIEW_H 113
 #endif
+
+/* The pointer pad: the small view's place on the touch screen (the game's 200 lines are
+   stretched to the PG_H above the tabs), a pixel wider than the stretch so no row of the view
+   shows beside it. */
+#define PAD_X ((float)VIEW_X)
+#define PAD_Y ((float)(VIEW_Y * PG_H / 200))
+#define PAD_W ((float)VIEW_W)
+#define PAD_H ((float)(((VIEW_Y + VIEW_H) * PG_H + 199) / 200 - VIEW_Y * PG_H / 200))
 
 static void say(const char *m)
 {
@@ -311,6 +323,24 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
 
 int front_menu_open(void) { return overlay != 0; }
 
+/* The pointer pad is up: exploring (the game's own map, a conversation, the menus and character
+   creation redraw the whole game screen, so it is off there), the Game page, no port menu. */
+static int pad_on(void)
+{
+    const struct uwsnap *s = uw_snap();
+    return !overlay && s->in_game && s->mode == SNAP_VIEW && tab == TAB_GAME;
+}
+
+int front_pad_at(int px, int py)
+{
+    return pad_on() && px >= PAD_X && px < PAD_X + PAD_W && py >= PAD_Y && py < PAD_Y + PAD_H;
+}
+
+void front_pad_view(float *x0, float *y0, float *x1, float *y1)
+{
+    *x0 = VIEW_X; *y0 = VIEW_Y; *x1 = VIEW_X + VIEW_W - 1; *y1 = VIEW_Y + VIEW_H - 1;
+}
+
 float front_game_height(void)
 {
     const struct uwsnap *s = uw_snap();
@@ -335,7 +365,9 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
     if (touching && !was_touching) {
         float gh = front_game_height();
         touch_mine = gh <= 0 || t.py >= gh;
+        pad_touch = !touch_mine && front_pad_at(t.px, t.py);
     }
+    if (!touching) pad_touch = 0;
     mine = (touching || was_touching) && touch_mine;
     was_touching = touching;
     {   /* drag a page: the text follows the stylus, one entry or row per 14 px, with a little momentum */
@@ -431,7 +463,7 @@ void front_tick(void)
         static int told;
         const struct uwsnap *s = uw_snap();
         if (s->in_game && !tip_seen && s->mode == SNAP_VIEW && !overlay) {   /* once ever: the first steps */
-            tip_until = p3_frame() + 600;       /* ten seconds on the hint strip (front_draw_top words it) */
+            tip_until = p3_frame() + 600;       /* ten seconds in the band on the top view (front_draw_top words it) */
             tip_seen = 1; opts_save();
         }
         if (!s->in_game) told = 0;
@@ -583,6 +615,26 @@ static void draw_spells(void)
     if (!row) empty_page("No spells yet: find runestones to learn them.");
 }
 
+/* The pointer pad, over the game's small 3D view on the touch screen: what it does, and the
+   standing hints that were the top screen's strip (the top is the view alone now). */
+static void draw_pad(void)
+{
+    float x = PAD_X, y = PAD_Y, w = PAD_W, h = PAD_H, cx = x + w / 2, ty, lh;
+    char b[64];
+    ui_frame(x, y, w, h, COL_BG, pad_touch ? COL_GOLD : COL_EDGE);
+    ui_rect(x + 1, y + 1, w - 2, 17, pad_touch ? COL_PANEL2 : COL_PANEL);
+    ui_text_fit(cx, y + 2, 0.42f, COL_GOLD, C2D_AlignCenter, w - 10, "POINTER PAD");
+    lh = (h - 22) / 7; ty = y + 20;
+    ui_text_fit(cx, ty, 0.4f, COL_TEXT, C2D_AlignCenter, w - 10, "Slide: move the pointer"); ty += lh;
+    ui_text_fit(cx, ty, 0.4f, COL_TEXT, C2D_AlignCenter, w - 10, "Tap: click where it points"); ty += lh;
+    ui_text_fit(cx, ty, 0.4f, COL_TEXT, C2D_AlignCenter, w - 10, "R + tap: right click"); ty += lh;
+    snprintf(b, sizeof b, "%s: use   %s: look", front_key_name(CONFIRM_KEY), front_key_name(KEY_X));
+    ui_text_fit(cx, ty, 0.4f, COL_TEXT, C2D_AlignCenter, w - 10, b); ty += lh;
+    ui_text_fit(cx, ty, 0.4f, COL_DIM, C2D_AlignCenter, w - 10, "Circle Pad: walk   L: attack"); ty += lh;
+    ui_text_fit(cx, ty, 0.4f, COL_DIM, C2D_AlignCenter, w - 10, "C-Stick: turn and look"); ty += lh;
+    ui_text_fit(cx, ty, 0.4f, COL_DIM, C2D_AlignCenter, w - 10, "START: menu   ZL: swap");
+}
+
 static void draw_tabs(void)
 {
     int i;
@@ -615,6 +667,24 @@ static void draw_big_view(int eye, float iod)
     ui_rect(x + w - 2, y - 4, 4, h + 8, COL_EDGE);
 }
 
+/* Exploring (stage 1 of the new layout): the 3D view alone, as tall as the screen and in its own
+   shape (UW1 172x113 -> 365x240, UW2 208x128 -> 390x240), black each side; no frame, no strip.
+   The 3D slider floats it behind the screen as before; the black sides widen by the shift so
+   both eyes get the same edges. The source is taken half a pixel in, so the smoothing never
+   pulls in the frame's pixels around the view. */
+static void draw_full_view(int eye, float iod)
+{
+    u32 black = C2D_Color32(0, 0, 0, 255);
+    float w = (VIEW_W - 1) * (float)TOP_H / (VIEW_H - 1), x = (TOP_W - w) / 2;
+    float shift = (eye ? 1 : -1) * iod * 7.0f, cover = iod > 0 ? iod * 7.0f : 0;
+    ui_rect(0, 0, TOP_W, TOP_H, black);
+    p3_draw_picture(VIEW_X + 0.5f, VIEW_Y + 0.5f, VIEW_W - 1, VIEW_H - 1, x - shift, 0, w, TOP_H);
+    if (cover > 0) {
+        ui_rect(0, 0, x + cover, TOP_H, black);
+        ui_rect(x + w - cover, 0, TOP_W - x - w + cover, TOP_H, black);
+    }
+}
+
 static void draw_title(void)
 {
     ui_header(TOP_W, UW3DS_TITLE, "New 3DS");
@@ -643,24 +713,29 @@ static void busy_draw(void)
 void front_draw_top(int eye, float iod)
 {
     const struct uwsnap *s = uw_snap();
+    /* the view alone: exploring, on the real top screen (ZL swapped lays the old page out at 320) */
+    int full = s->in_game && s->mode == SNAP_VIEW && TOP_W >= 400;
     ui_begin();
     ui_rect(0, 0, TOP_W, TOP_H, COL_BG);
     if (overlay == OV_MANUAL) { manual_draw_top(); return; }
-    if (s->mode == SNAP_VIEW || s->mode == SNAP_CONV) draw_big_view(eye, iod);
+    if (full) draw_full_view(eye, iod);
+    else if (s->mode == SNAP_VIEW || s->mode == SNAP_CONV) draw_big_view(eye, iod);
     else if (s->in_game) map_draw(0, 0, TOP_W, TOP_H);     /* the game's own map is on the bottom */
     else draw_title();
-    /* the hint strip: always there, same place in every port; toasts and the menu notice take
-       its place, opaque, drawn last */
+    /* the hint strip: there in every mode but the view alone (its standing hints are on the
+       pointer pad), same place in every port; toasts, the first-steps tip and the menu notice
+       take its place, opaque, drawn last: over the view alone they are a short band that goes away */
     if (toast_until && (int)(toast_until - p3_frame()) > 0) ui_hint(TOP_W, toast, 1);
     else if (tip_until && (int)(tip_until - p3_frame()) > 0 && !overlay && s->in_game) {
         char h[96];
-        snprintf(h, sizeof h, TOP_W < 400 ? "Tap things in the small view. %s: use" : "Tap things in the small view to use them.  %s: use what is ahead", front_key_name(CONFIRM_KEY));
+        snprintf(h, sizeof h, TOP_W < 400 ? "Tap things in the small view. %s: use" : "Slide on the pointer pad, tap it to click.  %s: use what is ahead", front_key_name(CONFIRM_KEY));
         ui_hint(TOP_W, h, 1);
     } else if (overlay && overlay != OV_MANUAL) {
         char h[80];                             /* the back button's real name (left hand, A/B swap) */
         snprintf(h, sizeof h, TOP_W < 400 ? "Port menu   %s: back   START: close" : "Port menu open    %s: back    START: close", front_key_name(BACK_KEY));
         ui_hint(TOP_W, h, 0);
     }
+    else if (full) { }
     else if (s->in_game) ui_hint(TOP_W, TOP_W < 400 ? "START menu  ZL swap  Pad walk  C-Stick look" : "START menu    ZL swap screens    Circle Pad walk    C-Stick look", 0);
     else ui_hint(TOP_W, "START menu    ZL swap screens", 0);
     busy_draw();
@@ -907,6 +982,7 @@ int front_draw_bottom(void)
     if (!overlay) {
         ui_nav_frame(0);
         if (!uw_snap()->in_game) return 0;
+        if (pad_on()) draw_pad();
         if (tab != TAB_GAME) {
             ui_rect(0, 0, PG_W, PG_H, COL_BG);
             switch (tab) {
