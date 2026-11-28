@@ -2,9 +2,13 @@
 [1]This is Ultima Underworld: The Stygian Abyss on your New 3DS: the original game, decompiled byte for byte by the Underworld Exhumed project, running natively with a 3DS front end.
 [2]This is Ultima Underworld II: Labyrinth of Worlds on your New 3DS: the original game, decompiled byte for byte by the Underworld Exhumed project, running natively with a 3DS front end.
 
-The top screen is the game's 3D view, about twice its size, in stereoscopic 3D when you turn up the 3D slider. When you talk to someone, the conversation shows there too.
+The top screen is the game's 3D view and nothing else, as tall as the screen, in stereoscopic 3D when you turn up the 3D slider. Messages from the port (a quicksave, "Working...") show for a moment in a band over it.
 
-The bottom screen is the whole game screen. Play it with the stylus exactly as you would with a mouse: your inventory, the icons, the runes and the scroll, and the small view, where you tap things in the world to use or pick them up. Tap and drag to move items, and hold R while tapping for the right mouse button.
+The bottom screen is the whole game screen. Play it with the stylus exactly as you would with a mouse: your inventory, the icons, the runes and the scroll. Tap and drag to move items, and hold R while tapping for the right mouse button.
+
+Where the game's own small view would be, the bottom screen has the pointer pad. It works like a laptop's touchpad: slide the stylus on it and the game's pointer moves inside the view on the top screen; tap the pad and the game clicks where the pointer is (use, pick up, talk; hold R while tapping for the right button). See The pointer pad.
+
+When you talk to someone, read the game's map or are in the game's menus, the pad is put away and the bottom screen is the game's whole screen, touched directly.
 
 Under the game is a row of tabs: Game, Map, Status, Log, Journal and Spells. The other tabs show a dashboard page on the bottom screen in place of the game; tap Game (or press SELECT) to go back. START opens the port menu.
 
@@ -25,12 +29,26 @@ SELECT: the next tab on the bottom screen. Hold SELECT and use the Circle Pad to
 START: the port menu.
 ZL: swap the screens, at any time. The game goes up on the top screen, filling it, and the dashboard comes down. While swapped the touch screen is a touchpad: slide a finger or the stylus to move the game's cursor, and tap to click where it points (hold R while tapping for the right button). Press ZL again to swap back.
 
-# The cursor
-Many actions work on whatever is under the game's cursor. The cursor stays wherever you last touched the screen.
+# The pointer pad
+The pad sits on the bottom screen where the game's small 3D view used to be. The view itself is on the top screen, so the pad is how you point into it.
 
-When you walk with the circle pad after touching the screen, the cursor goes back to the centre of the view, so A and X act on what is straight ahead of you.
+Slide: the game's pointer moves by how far the stylus slides, not to where it is, and it stays inside the view. Watch it on the top screen.
+Tap: a click where the pointer is. That is how you use a door or a lever, pick something up, or talk to someone, by the icon chosen on the left of the game screen.
+R held, then tap: the right mouse button.
+If the pointer was somewhere else (on your inventory, say), a touch on the pad starts it at the centre of the view.
+Near the edges of the view the game turns the pointer into an arrow, as in the original: a tap there moves or turns you a little that way.
+
+To drop or throw something into the world: drag it from your inventory onto the pad and let go. Where you let go on the pad is where it goes in the view. Or tap the item to pick it up, then tap the pad.
+
+The pad's edge turns gold while the stylus is on it. The lines on it name the buttons you need most; with LEFT HAND on they name the buttons you really press.
+
+Many actions work on whatever is under the game's pointer. The pointer stays where you last left it.
+
+When you walk with the Circle Pad after touching the screen, the pointer goes back to the centre of the view, so A and X act on what is straight ahead of you.
 
 Small things: the game's own screen keeps its original size, so the runes, the icons and the inventory squares are small. Use the stylus, not a finger, and hold it still as you tap. Or press ZL: the game fills the top screen and the touch screen becomes a touchpad, so you slide the cursor onto a small thing and tap to click it. For a thing in the world straight ahead, A (use) and X (look) need no tapping at all.
+
+ZL swapped is the older layout: the game's whole screen on top and the whole touch screen as the touchpad.
 
 # Page: Map
 A live map of the level you are on, drawn from the game's own record of the squares you have seen. The arrow is you; it turns as you turn.

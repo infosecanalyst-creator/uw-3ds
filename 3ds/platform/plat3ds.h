@@ -84,6 +84,11 @@ int front_input(u32 down, u32 held, u32 up, circlePosition cp, circlePosition cs
 /* A thread other than the main one stops here for good once the app is leaving. */
 void p3_park_point(void);
 float front_game_height(void);
+/* The pointer pad (drawn over the game's small 3D view on the touch screen while you explore):
+   1 when the touch-screen point is on it; and the view's rectangle in the game's pixels, which
+   the pad's pointer stays inside. */
+int front_pad_at(int px, int py);
+void front_pad_view(float *x0, float *y0, float *x1, float *y1);
 /* The port menu (or the manual) is open on the touchscreen layer. */
 int front_menu_open(void);
 /* Which mouse button a new touch presses: PLAT_BUTTON_LEFT, or _RIGHT while a modifier is held. */

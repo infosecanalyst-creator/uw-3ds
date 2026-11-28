@@ -63,11 +63,29 @@ index 5b1595b..76d40b8 100644
  #endif
          if (changed)
              do_changes();
+diff --git a/uw1/src/gfx/CUTS.C b/uw1/src/gfx/CUTS.C
+index 9c63eee..21b6ced 100644
+--- a/uw1/src/gfx/CUTS.C
++++ b/uw1/src/gfx/CUTS.C
+@@ -800,7 +800,13 @@ void far runcutscene(register unsigned n)
+         y += 9;
+         h += 0xB;
+     }
++#ifdef __3DS__
++    port_cutscene_hook(n < 0x100);  /* 3DS port only: a cutscene that fills the screen (the pointer pad stays off it) */
++#endif
+     show_anm(n, x, y, w, h);
++#ifdef __3DS__
++    port_cutscene_hook(0);
++#endif
+     grfx_load_font("font5x6p.sys");
+     if (in_game) load_txtmaps();
+     if (n < 0x100) {
 diff --git a/uw1/src/port/portgame.h b/uw1/src/port/portgame.h
-index 9de9f27..e65827b 100644
+index cd17fb4..2466bce 100644
 --- a/uw1/src/port/portgame.h
 +++ b/uw1/src/port/portgame.h
-@@ -87,5 +87,13 @@ enum { ENH_SKIP_INTRO, ENH_WRAP_MENU, ENH_FAST_PANELS, ENH_FREE_HEADING, ENH_SUB
+@@ -87,5 +87,14 @@ enum { ENH_SKIP_INTRO, ENH_WRAP_MENU, ENH_FAST_PANELS, ENH_FREE_HEADING, ENH_SUB
  /* --enhance modern-keys: the key code a lone left Shift gives (ui/MOUSE.C), unused by the game */
  #define PORT_KEY_LSHIFT 0xBF
  int port_pitch_bound(void);                 /* game/PLAYER.C: the pitch's bound either way */
@@ -78,6 +96,7 @@ index 9de9f27..e65827b 100644
 +void port_said_hook(const char *s);
 +extern const char *port_quicksave_desc;  /* SaveGame's description when set: no prompt */
 +void port_text_request(const char *prompt, int maxlen, int digits);  /* the game waits for typed text */
++void port_cutscene_hook(int full);         /* a full-screen cutscene starts (1) or any cutscene ends (0) */
 +#endif
  
  #endif
@@ -164,11 +183,29 @@ index 09799de..0634127 100644
  #endif
          do_changes();
          input_dispatch(inplist);
+diff --git a/uw2/src/gfx/CUTS.C b/uw2/src/gfx/CUTS.C
+index 5d425a2..36fc8db 100644
+--- a/uw2/src/gfx/CUTS.C
++++ b/uw2/src/gfx/CUTS.C
+@@ -1485,7 +1485,13 @@ void far show_cutscene(register unsigned n)
+         y += 4;
+         h += 5;
+     }
++#ifdef __3DS__
++    port_cutscene_hook(n < 0x100);  /* 3DS port only: a cutscene that fills the screen (the pointer pad stays off it) */
++#endif
+     show_anm(n, x, y, w, h);
++#ifdef __3DS__
++    port_cutscene_hook(0);
++#endif
+     grfx_quikfont(FONT_5X6P);
+     if (in_game) load_txtmaps();
+     if (n < 0x100) {
 diff --git a/uw2/src/port/portgame.h b/uw2/src/port/portgame.h
-index 80406a9..d4b19f4 100644
+index 82aaf02..f562ab0 100644
 --- a/uw2/src/port/portgame.h
 +++ b/uw2/src/port/portgame.h
-@@ -70,5 +70,13 @@ enum { ENH_SKIP_INTRO, ENH_WRAP_MENU, ENH_FAST_PANELS, ENH_FREE_HEADING, ENH_SUB
+@@ -70,5 +70,14 @@ enum { ENH_SKIP_INTRO, ENH_WRAP_MENU, ENH_FAST_PANELS, ENH_FREE_HEADING, ENH_SUB
  /* --enhance modern-keys: the key code a lone left Shift gives (ui/MOUSE.C), unused by the game */
  #define PORT_KEY_LSHIFT 0xBF
  int port_pitch_bound(void);                 /* game/PLAYER.C: the pitch's bound either way */
@@ -179,6 +216,7 @@ index 80406a9..d4b19f4 100644
 +void port_said_hook(const char *s);
 +extern const char *port_quicksave_desc;  /* SaveGame's description when set: no prompt */
 +void port_text_request(const char *prompt, int maxlen, int digits);  /* the game waits for typed text */
++void port_cutscene_hook(int full);         /* a full-screen cutscene starts (1) or any cutscene ends (0) */
 +#endif
  
  #endif

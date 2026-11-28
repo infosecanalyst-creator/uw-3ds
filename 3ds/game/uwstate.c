@@ -206,6 +206,12 @@ void port_said_hook(const char *s)
     uwglue_said(s, conv, who, item);
 }
 
+/* A cutscene that fills the game's screen plays (a dream, the ending) while the game is still
+   "in the 3D view" and the snapshot stands still: the front end puts the pointer pad away and
+   gives the top screen back to the framed page, as it does for a conversation. */
+volatile int uw_cuts_full;
+void port_cutscene_hook(int full) { uw_cuts_full = full; }
+
 /* The game waits for typed text (wdialog, the character's name): the front end shows the
    system keyboard and types what was entered (front/glue.c). */
 void port_text_request(const char *prompt, int maxlen, int digits)

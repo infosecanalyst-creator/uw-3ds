@@ -587,44 +587,82 @@ static void settings_input(u32 down, int touching, touchPosition t)
     sync_open();
 }
 
-/* ZL swapped: the touchscreen moves the game's cursor like a laptop's touchpad (by how far the
-   finger slides, not where it is) and a short tap clicks where the cursor is. The game draws its
-   own cursor, so you see where it points on the top screen. */
-static void touchpad(int touching, touchPosition t)
+/* The touchpad: the touchscreen (ZL swapped), or the pointer pad on it (the normal layout, PAD 1),
+   moves the game's cursor like a laptop's touchpad (by how far the finger slides, not where it
+   is) and a short tap clicks where the cursor is. The game draws its own cursor, so you see
+   where it points on the top screen. On the pad the cursor stays inside the game's 3D view
+   (the pad is that view's stand-in); a slide that starts with the cursor elsewhere (the
+   inventory) begins at the view's centre. */
+static int tp_was, tp_release_due;
+static unsigned tp_b;
+
+static void tp_tick(void)               /* a tap's button comes up 100 ms after it went down */
 {
-    static int was, moved, lx, ly, release_due;
-    static unsigned start, b;
-    if (front_menu_open()) { was = 0; return; }
+    if (tp_release_due && (int)(frames - tp_release_due) >= 0) { p3_mouse_button(tp_b, 0); tp_release_due = 0; }
+}
+
+static void touchpad(int touching, touchPosition t, int pad)
+{
+    static int moved, lx, ly;
+    static unsigned start;
+    float x0 = 0, y0 = 0, x1 = 319, y1 = 199;
+    if (front_menu_open()) { tp_was = 0; return; }
+    if (pad) front_pad_view(&x0, &y0, &x1, &y1);
     if (touching) {
-        if (!was) { lx = t.px; ly = t.py; moved = 0; start = frames; }
-        else {
+        if (!tp_was) {
+            lx = t.px; ly = t.py; moved = 0; start = frames;
+            if (pad && (mx < x0 || mx > x1 || my < y0 || my > y1)) p3_mouse_move((x0 + x1) / 2, (y0 + y1) / 2);
+        } else {
             int dx = t.px - lx, dy = t.py - ly;
             if (dx || dy) {
                 /* the game's mouse is in its 320x200 coordinates; a little faster than 1:1 so
                    one slide crosses the screen */
-                p3_mouse_move(mx + dx * 1.25f, my + dy * 1.1f);
+                float nx = mx + dx * 1.25f, ny = my + dy * 1.1f;
+                if (nx < x0) nx = x0;
+                if (nx > x1) nx = x1;
+                if (ny < y0) ny = y0;
+                if (ny > y1) ny = y1;
+                p3_mouse_move(nx, ny);
                 moved += abs(dx) + abs(dy);
                 lx = t.px; ly = t.py;
             }
         }
-    } else if (was && moved < 8 && frames - start < 20) {
-        b = front_touch_button();
-        p3_mouse_button(b, 1);
-        release_due = frames + 6;           /* held 100 ms, so the game's poll sees it */
+    } else if (tp_was && moved < 8 && frames - start < 20) {
+        tp_b = front_touch_button();
+        p3_mouse_button(tp_b, 1);
+        tp_release_due = frames + 6;        /* held 100 ms, so the game's poll sees it */
     }
-    if (release_due && (int)(frames - release_due) >= 0) { p3_mouse_button(b, 0); release_due = 0; }
-    was = touching;
+    tp_tick();
+    tp_was = touching;
 }
+
+static int swapped;                 /* ZL: the game on the top screen, the dashboard on the touchscreen */
 
 static void game_input(u32 down, u32 held_k, u32 up, circlePosition cp, circlePosition cs, int touching, touchPosition t)
 {
     static int was_touching, release_due;
     static unsigned touch_b, pressed_at;
+    static int on_pad;                  /* this touch began on the pointer pad */
     int took = front_input(down, held_k, up, cp, cs, touching, t);
+    if (!swapped) tp_tick();
     if (took) {
         if (was_touching || release_due) p3_mouse_button(touch_b, 0);
         was_touching = release_due = 0;
+        if (!swapped) on_pad = tp_was = 0;
         return;
+    }
+    /* A touch that begins on the pointer pad is a touchpad's until it lifts. One that begins
+       anywhere else is direct, also while it crosses the pad: the pad lies exactly where the
+       game's view is, so an item dragged from the inventory onto it lands in the world. */
+    if (!swapped) {
+        if (touching && !was_touching) on_pad = front_pad_at(t.px, t.py);
+        if (on_pad) {
+            if (release_due) { p3_mouse_button(touch_b, 0); release_due = 0; }
+            touchpad(touching, t, 1);
+            if (!touching) on_pad = 0;
+            was_touching = touching;
+            return;
+        }
     }
     if (touching) {
         /* the game's 320x200 is stretched to the front end's game lines */
@@ -648,7 +686,6 @@ static void game_input(u32 down, u32 held_k, u32 up, circlePosition cp, circlePo
     was_touching = touching;
 }
 
-static int swapped;                 /* ZL: the game on the top screen, the dashboard on the touchscreen */
 /* Rule 16 (remember the setup): the swap is kept in a marker file next to the settings. */
 #define SWAP_FILE UW3DS_HOME "/.swapped"
 static int swap_loaded;
@@ -874,7 +911,7 @@ int plat_run(const PlatConfig *cfg, const PlatHooks *h, int (*game)(void *), voi
         if (swapped && !settings_open()) {
             /* the touchscreen is a touchpad for the game on the top screen (or, with the port
                menu open, nothing: its buttons are reached with the D-pad and A) */
-            touchpad(touching, t);
+            touchpad(touching, t, 0);
             touching = 0;
         }
         taps_run();

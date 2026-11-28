@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-27
+
+- New screen layout, stage 1. While you explore, the top screen is the 3D view alone, as tall as the screen (no frame, no hint strip), with the 3D slider's depth as before.
+- On the touch screen a pointer pad takes the place of the game's small 3D view: slide to move the game's pointer inside the view (you see it on the top screen), tap to click, R + tap for the right button. An item dragged from the inventory onto the pad still drops into the world. The view is no longer shown on both screens.
+- The pad carries the hints that were on the top strip; with LEFT HAND on it names the buttons you really press.
+- Port messages (quicksave, the first-steps tip, the port menu notice) show as a short band over the top view and go away.
+- Conversations, the game's own map, the menus, character creation, full-screen cutscenes and ZL swap are as before (the pad is put away there).
+- Manual: new section "The pointer pad".
+
 ## 2026-11-21
 
 - QUICKLOAD asks first ("Load the last save in slot 4?", NO in focus) and is greyed out until slot 4 holds a save. It no longer sits beside QUICKSAVE.
