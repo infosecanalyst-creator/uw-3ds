@@ -1,0 +1,12 @@
+3ds/front/front.c: warnings
+  /__w/uw-3ds/uw-3ds/3ds/front/front.c:612:38: warning: 'snprintf' output may be truncated before the last format character [-Wformat-truncation=]
+  /__w/uw-3ds/uw-3ds/3ds/front/front.c:612:38: warning: 'snprintf' output may be truncated before the last format character [-Wformat-truncation=]
+  /__w/uw-3ds/uw-3ds/3ds/front/front.c:612:38: warning: 'snprintf' output may be truncated before the last format character [-Wformat-truncation=]
+3ds/front/glue.c: warnings
+  /__w/uw-3ds/uw-3ds/3ds/front/glue.c:270:79: warning: '%s' directive output may be truncated writing up to 593 bytes into a region of size 64 [-Wformat-truncation=]
+3ds/platform/plat_3ds.c: warnings
+  /__w/uw-3ds/uw-3ds/3ds/platform/plat_3ds.c:492:18: warning: 'llin' defined but not used [-Wunused-variable]
+  /__w/uw-3ds/uw-3ds/3ds/platform/plat_3ds.c:487:18: warning: 'lin' defined but not used [-Wunused-variable]
+compiled 190 of 190 sources
+linked build/uw1/uw1-3ds.elf (8059492 bytes)
+wrote build/uw1/uw1-3ds.3dsx (3140004 bytes)
