@@ -8,6 +8,8 @@
 - Port messages (quicksave, the first-steps tip, the port menu notice) show as a short band over the top view and go away.
 - Conversations, the game's own map, the menus, character creation, full-screen cutscenes and ZL swap are as before (the pad is put away there).
 - Manual: new section "The pointer pad".
+- Same shapes and words as the other ports: the port menu is in the house order (RESUME, MANUAL, QUICKSAVE, QUICKLOAD, OPTIONS, EXIT GAME; QUICKLOAD still asks first). EXIT GAME asks "Exit Ultima Underworld?" (Underworld II: "Exit Ultima Underworld II?") with "It is saved first (slot 4)." under it (was "Leave the game?"). The quickload question's YES button says YES (was "YES, LOAD"). A failed exit save says "Not saved!".
+- Manual: LEFT HAND is now also a button in the manual (second last; the D-pad goes down to it and A presses it), as in the other ports. The Log and Journal sections are one section, "Pages: Log, Journal", to make room.
 
 ## 2026-11-21
 

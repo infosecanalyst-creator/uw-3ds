@@ -17,6 +17,7 @@ static char *book;
 static struct { const char *title; const char *body; } ch[MAXCH];
 static int nch;
 static int cur, scroll;
+static int bar;                    /* D-pad focus past the sections: 1 LEFT HAND, 2 CLOSE (0: on cur) */
 static int max_scroll = 1 << 20;   /* the chapter's length past the page, from the last draw */
 
 static void subst(char *s)
@@ -95,27 +96,33 @@ int manual_chapters(void) { return nch; }
 void manual_open(int chapter)
 {
     cur = chapter < 0 ? 0 : chapter >= nch ? nch - 1 : chapter;
+    bar = 0;
     scroll = 0;
     max_scroll = 1 << 20;
 }
 
 int manual_current(void) { return cur; }
+int manual_bar(void) { return bar; }
 
 /* The manual's controls, the same in every one of these 3DS ports: the Circle Pad and the
    C-stick scroll the text (held, it keeps scrolling); the D-pad moves between the section buttons
-   on the bottom screen (two columns: left and right step, up and down a row); L and R the
-   previous or next section; a tap on a section opens it; B or START close. */
+   on the bottom screen (two columns: left and right step, up and down a row), and on to the last
+   cells, LEFT HAND and CLOSE, which A presses (front.c); L and R the previous or next section;
+   a tap on a section opens it; B or START close. */
 void manual_input(u32 down, u32 held, circlePosition cp, circlePosition cs)
 {
-    int to = cur;
+    int at = bar ? nch - 1 + bar : cur, to = at;   /* the grid's cells: the sections, then LEFT HAND, CLOSE */
     (void)held;
+    if (down & KEY_DRIGHT) to = at + 1;
+    if (down & KEY_DLEFT) to = at - 1;
+    if (down & KEY_DDOWN) to = at + 2;
+    if (down & KEY_DUP) to = at - 2;
     if (down & KEY_R) to = cur + 1;
     if (down & KEY_L) to = cur - 1;
-    if (down & KEY_DRIGHT) to = cur + 1;
-    if (down & KEY_DLEFT) to = cur - 1;
-    if (down & KEY_DDOWN) to = cur + 2;
-    if (down & KEY_DUP) to = cur - 2;
-    if (to != cur && to >= 0 && to < nch) { cur = to; scroll = 0; max_scroll = 1 << 20; }
+    if (to != at && to >= 0 && to < nch + 2) {
+        if (to >= nch) bar = to - nch + 1;
+        else { bar = 0; if (to != cur) { cur = to; scroll = 0; max_scroll = 1 << 20; } }
+    }
     if (cp.dy < -40 || cs.dy < -40) scroll += (cp.dy < -110 || cs.dy < -110) ? 6 : 3;
     if (cp.dy > 40 || cs.dy > 40) scroll -= (cp.dy > 110 || cs.dy > 110) ? 6 : 3;
     /* drag the stylus on the touch screen to scroll, with a little momentum (rule 13) */

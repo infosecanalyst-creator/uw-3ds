@@ -14,6 +14,7 @@ const char *manual_title(int chapter);
 void manual_open(int chapter);
 void manual_input(u32 down, u32 held, circlePosition cp, circlePosition cs);
 int manual_current(void);
+int manual_bar(void);                   /* D-pad focus on the last row: 0 a section, 1 LEFT HAND, 2 CLOSE */
 void manual_draw_top(void);
 
 /* glue.c, the main thread's side */

@@ -320,6 +320,7 @@ static void tab_scroll(int d, int lr)
 }
 
 static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, int touching, touchPosition t);
+static void manual_lefty(void);
 
 int front_menu_open(void) { return overlay != 0; }
 
@@ -752,8 +753,12 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
     (void)touching; (void)t;
     if (overlay == OV_MANUAL) {
         manual_input(down, held, cp, cs);
-        /* B or START close the manual and go back to the game, as in the other ports */
-        if (down & (BACK_KEY | KEY_START)) { overlay = OV_NONE; p3_pause(0); opts_save(); opts_flush(); }
+        /* A presses the last-row cell the D-pad is on: LEFT HAND or CLOSE */
+        if ((down & CONFIRM_KEY) && manual_bar() == 1) manual_lefty();
+        /* B or START (or A on CLOSE) close the manual and go back to the game, as in the other ports */
+        if ((down & (BACK_KEY | KEY_START)) || ((down & CONFIRM_KEY) && manual_bar() == 2)) {
+            overlay = OV_NONE; p3_pause(0); opts_save(); opts_flush();
+        }
         return 1;
     }
     if (overlay == OV_QUIT && quit_state == 1) return 1;   /* the exit save is running: nothing to press */
@@ -774,20 +779,21 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
     return 1;
 }
 
-/* The house START menu: one column, six buttons. QUICKSAVE and QUICKLOAD are kept apart, and
-   QUICKLOAD asks first (it throws away everything since the save). */
+/* The house START menu, in the house order: RESUME, MANUAL, save, load, OPTIONS, EXIT GAME, one
+   column. QUICKLOAD sits under QUICKSAVE as in the other ports; it is safe there because it asks
+   first (NO in focus), and a stray QUICKSAVE keeps the save it replaced (SAVE4.BAK). */
 static void menu_main(void)
 {
     const struct uwsnap *s = uw_snap();
     ui_header(BOT_W, UW3DS_TITLE, "MENU");
     if (ui_button(8, 28, 304, 30, "RESUME", 0)) { overlay = OV_NONE; p3_pause(0); }
-    if (ui_button_en(8, 63, 304, 30, "QUICKSAVE (SLOT 4)", 0, s->in_game)) {
+    if (ui_button(8, 63, 304, 30, "MANUAL", 0)) { overlay = OV_MANUAL; manual_open(0); }
+    if (ui_button_en(8, 98, 304, 30, "QUICKSAVE (SLOT 4)", 0, s->in_game)) {
         overlay = OV_NONE; p3_pause(0);
         if (!uw_request_save(4, "Quicksave")) say("You cannot save just now.");
     }
-    if (ui_button(8, 98, 304, 30, "MANUAL", 0)) { overlay = OV_MANUAL; manual_open(0); }
-    if (ui_button(8, 133, 304, 30, "OPTIONS", 0)) overlay = OV_OPTIONS;
-    if (ui_button_en(8, 168, 304, 30, "QUICKLOAD (SLOT 4)", 0, s->in_game && qs_state)) overlay = OV_LOAD;
+    if (ui_button_en(8, 133, 304, 30, "QUICKLOAD (SLOT 4)", 0, s->in_game && qs_state)) overlay = OV_LOAD;
+    if (ui_button(8, 168, 304, 30, "OPTIONS", 0)) overlay = OV_OPTIONS;
     if (ui_button(8, 203, 304, 30, "EXIT GAME", 0)) { quit_state = 0; overlay = OV_QUIT; }
 }
 
@@ -821,7 +827,7 @@ static void menu_load(void)
     ui_text_fit(BOT_W / 2, 58, 0.42f, COL_DIM, C2D_AlignCenter, BOT_W - 16, "What you did since that save is lost.");
     /* NO is drawn first so the D-pad focus starts on it */
     if (ui_button(170, 84, 130, 40, "NO", 0)) overlay = OV_MENU;
-    if (ui_button_en(20, 84, 130, 40, "YES, LOAD", 0, qs_state & 1)) {
+    if (ui_button_en(20, 84, 130, 40, "YES", 0, qs_state & 1)) {
         overlay = OV_NONE; p3_pause(0);
         if (!uw_request_restore(4)) say("You cannot restore just now.");
     }
@@ -881,19 +887,27 @@ static void menu_map(void)
     if (ui_button(230, 200, 84, 30, "DONE", 0)) overlay = OV_OPTIONS;
 }
 
-/* The manual's sections, two columns, with CLOSE as the last cell: 26 px buttons 4 px apart
-   while they fit in seven rows (rule 11), the older tighter grid for a longer book. */
+/* The manual's sections, two columns, with LEFT HAND and CLOSE as the last two cells (as in the
+   other ports' manuals): 26 px buttons 4 px apart while they fit in seven rows (rule 11), the older
+   tighter grid for a longer book. The gold look marks the open section, or the last-row cell the
+   D-pad is on (manual_bar); A presses that cell (menu_input). */
+static void manual_lefty(void) { lefty = !lefty; opts_save(); }
 static void menu_manual(void)
 {
-    int i, n = manual_chapters();
-    int roomy = (n + 2) / 2 <= 7;
+    int i, n = manual_chapters(), b = manual_bar();
+    int roomy = (n + 3) / 2 <= 7;
     float h = roomy ? 26 : 22, pitch = roomy ? 30 : 23;
+    const char *lh = lefty ? "LEFT HAND: ON" : "LEFT HAND: OFF";
     ui_header(BOT_W, "Manual", NULL);
     for (i = 0; i < n && i < 16; i++) {
         float x = 6 + (i % 2) * 156, y = 27 + (i / 2) * pitch;
-        if (ui_button(x, y, 152, h, manual_title(i), i == manual_current())) manual_open(i);
+        if (ui_button(x, y, 152, h, manual_title(i), !b && i == manual_current())) manual_open(i);
     }
-    if (roomy ? ui_button(6 + (n % 2) * 156, 27 + (n / 2) * pitch, 152, h, "CLOSE", 0) : ui_button(230, 213, 84, 24, "CLOSE", 0)) {
+    if (roomy ? ui_button(6 + (n % 2) * 156, 27 + (n / 2) * pitch, 152, h, lh, b == 1)
+              : ui_button(6, 213, 150, 24, lh, b == 1))
+        manual_lefty();
+    if (roomy ? ui_button(6 + ((n + 1) % 2) * 156, 27 + ((n + 1) / 2) * pitch, 152, h, "CLOSE", b == 2)
+              : ui_button(230, 213, 84, 24, "CLOSE", b == 2)) {
         overlay = OV_NONE; p3_pause(0);
     }
 }
@@ -924,16 +938,16 @@ static void menu_quit(void)
         return;
     }
     if (quit_state == 2) {
-        ui_text(BOT_W / 2, 52, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "! Not saved");
+        ui_text(BOT_W / 2, 52, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "Not saved!");
         ui_text_fit(BOT_W / 2, 76, 0.42f, COL_DIM, C2D_AlignCenter, BOT_W - 16, quit_why ? quit_why : "");
-        ui_text(BOT_W / 2, 96, 0.42f, COL_DIM, C2D_AlignCenter, 0, "Exit anyway? NO goes back to the game.");
+        ui_text(BOT_W / 2, 96, 0.42f, COL_DIM, C2D_AlignCenter, 0, "Exit anyway? NO goes back to the menu.");
         if (ui_button(170, 130, 130, 40, "NO", 0)) { quit_state = 0; overlay = OV_MENU; }
         if (ui_button(20, 130, 130, 40, "EXIT ANYWAY", 0)) p3_quit();
         return;
     }
-    ui_text(BOT_W / 2, 60, 0.55f, COL_TEXT, C2D_AlignCenter, 0, "Leave the game?");
-    ui_text(BOT_W / 2, 84, 0.42f, COL_DIM, C2D_AlignCenter, 0,
-            s->in_game ? "The game is quicksaved first." : "Anything not saved is lost.");
+    ui_text_fit(BOT_W / 2, 60, 0.55f, COL_TEXT, C2D_AlignCenter, BOT_W - 16, "Exit " UW3DS_TITLE "?");
+    ui_text_fit(BOT_W / 2, 84, 0.42f, COL_DIM, C2D_AlignCenter, BOT_W - 16,
+                s->in_game ? "It is saved first (slot 4)." : "No game is running: nothing to save.");
     /* NO is drawn first so the D-pad focus starts on it */
     if (ui_button(170, 130, 130, 40, "NO", 0)) overlay = OV_MENU;
     if (ui_button(20, 130, 130, 40, "YES", 0)) {

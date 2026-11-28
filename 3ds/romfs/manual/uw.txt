@@ -12,7 +12,7 @@ When you talk to someone, read the game's map or are in the game's menus, the pa
 
 Under the game is a row of tabs: Game, Map, Status, Log, Journal and Spells. The other tabs show a dashboard page on the bottom screen in place of the game; tap Game (or press SELECT) to go back. START opens the port menu.
 
-In this manual: the Circle Pad or C-stick scrolls (or drag the stylus up and down on the touch screen), the D-pad moves between the sections on the bottom screen, L and R go to the previous or next section, and B or START closes it and goes back to the game.
+In this manual: the Circle Pad or C-stick scrolls (or drag the stylus up and down on the touch screen), the D-pad moves between the sections on the bottom screen, L and R go to the previous or next section, and B or START closes it and goes back to the game. The last row holds LEFT HAND (see The port menu) and CLOSE: tap them, or go down to them with the D-pad and press A.
 
 # Buttons
 Circle Pad: walk forward (push all the way to run) and back, and step sideways (strafe) left and right.
@@ -60,11 +60,10 @@ In the port menu, under OPTIONS, MAP lets you zoom the map and look at other lev
 # Page: Status
 Your vitality, mana, level and experience, how hungry and tired you are, any poison, your light, and the spells working on you.
 
-# Page: Log
-Every message the scroll at the bottom of the game screen has shown, so nothing is lost when it scrolls away. Hold SELECT and use the Circle Pad to read back, or drag the stylus up or down the page (it glides a little when you let go).
+# Pages: Log, Journal
+Log: every message the scroll at the bottom of the game screen has shown, so nothing is lost when it scrolls away. Hold SELECT and use the Circle Pad to read back, or drag the stylus up or down the page (it glides a little when you let go).
 
-# Page: Journal
-Every conversation you have had, by the person you spoke to: what they said and what you answered. Reread clues instead of writing them on paper. The journal is kept with your saved games, in journal.txt. When you start a new character the old journal is moved aside as journal-1.txt (then journal-2.txt and so on) and a fresh one begins. Like the Log and the Spells page, it scrolls by dragging the stylus.
+Journal: every conversation you have had, by the person you spoke to: what they said and what you answered. Reread clues instead of writing them on paper. The journal is kept with your saved games, in journal.txt. When you start a new character the old journal is moved aside as journal-1.txt (then journal-2.txt and so on) and a fresh one begins. Like the Log and the Spells page, it scrolls by dragging the stylus.
 
 # Magic
 The Spells page is your spell book: every spell whose runes you have learned, with its runes, and which D-pad direction it is on.
@@ -84,24 +83,24 @@ EXIT GAME and closing the game from the HOME menu also save to slot 4. So that o
 
 A quicksave is written to a scratch slot first and swapped into slot 4 only when it is complete, so a failed quicksave (for example a full SD card) never costs you the old one. The game says "Quicksave FAILED - is the SD card full?" and never says it saved when it did not. The game cannot save while a panel is open or while you hold an item on the cursor; put the item down and try again.
 
-EXIT GAME asks "Leave the game?" (NO is in focus), then quicksaves, then leaves. If it cannot save it shows "! Not saved" with the reason (the quicksave failed, or you cannot save just now) and asks "Exit anyway?": NO goes back to the game. It never leaves silently after a failed save. Closing the game from the HOME menu (HOME, then Close) does the same quicksave first, for a few seconds at most. Pressing HOME alone only pauses the game; it saves nothing by itself.
+EXIT GAME asks "Exit Ultima Underworld?" (in Underworld II: "Exit Ultima Underworld II?"), with "It is saved first (slot 4)." under it; YES is on the left, NO on the right and in focus, and B goes back. YES quicksaves, then leaves. If it cannot save it shows "Not saved!" with the reason (the quicksave failed, or you cannot save just now) and asks "Exit anyway?": NO goes back to the menu. It never leaves silently after a failed save. Closing the game from the HOME menu (HOME, then Close) does the same quicksave first, for a few seconds at most. Pressing HOME alone only pauses the game; it saves nothing by itself.
 
 Closing the 3DS lid pauses the game.
 
 # The port menu
 START opens it. The game waits while it is open. Tap a button, or move the gold highlight with the D-pad and press A. B goes back one page; START closes the menu.
 RESUME: back to the game.
-QUICKSAVE (SLOT 4): save now.
 MANUAL: this book.
-OPTIONS: the page below.
+QUICKSAVE (SLOT 4): save now.
 QUICKLOAD (SLOT 4): asks, then loads the last save in slot 4, or the one before it.
+OPTIONS: the page below.
 EXIT GAME: asks, quicksaves to slot 4, then leaves the game (asks again if the save failed).
 
 OPTIONS holds the things you set once:
 SPELL HOTKEYS: put spells on the D-pad.
 MAP: zoom in and out, and look at other levels.
 A/B: swaps which of the two confirms.
-LEFT HAND: ON swaps the D-pad with the face buttons: Y is up, A is right, B is down, X is left, and the reverse. Hints on the screen then name the buttons you really press. Your choice is kept.
+LEFT HAND: ON swaps the D-pad with the face buttons: Y is up, A is right, B is down, X is left, and the reverse. Hints on the screen then name the buttons you really press. Your choice is kept. The same switch is the second-last button of this manual's section list.
 GAME SETTINGS: the game's own settings screen: sound, the enhancements and the fixes. START or SELECT closes it.
 
 # Enhancements and fixes
