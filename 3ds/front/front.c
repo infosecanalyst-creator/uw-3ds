@@ -323,12 +323,14 @@ static int menu_input(u32 down, u32 held, circlePosition cp, circlePosition cs, 
 
 int front_menu_open(void) { return overlay != 0; }
 
-/* The pointer pad is up: exploring (the game's own map, a conversation, the menus and character
-   creation redraw the whole game screen, so it is off there), the Game page, no port menu. */
+/* The pointer pad is up: exploring (the game's own map, a conversation, a full-screen cutscene,
+   the menus and character creation redraw the whole game screen, so it is off there), the Game
+   page, no port menu. */
+extern volatile int uw_cuts_full;      /* game/uwstate.c: a full-screen cutscene is playing */
 static int pad_on(void)
 {
     const struct uwsnap *s = uw_snap();
-    return !overlay && s->in_game && s->mode == SNAP_VIEW && tab == TAB_GAME;
+    return !overlay && s->in_game && s->mode == SNAP_VIEW && !uw_cuts_full && tab == TAB_GAME;
 }
 
 int front_pad_at(int px, int py)
@@ -714,7 +716,7 @@ void front_draw_top(int eye, float iod)
 {
     const struct uwsnap *s = uw_snap();
     /* the view alone: exploring, on the real top screen (ZL swapped lays the old page out at 320) */
-    int full = s->in_game && s->mode == SNAP_VIEW && TOP_W >= 400;
+    int full = s->in_game && s->mode == SNAP_VIEW && !uw_cuts_full && TOP_W >= 400;
     ui_begin();
     ui_rect(0, 0, TOP_W, TOP_H, COL_BG);
     if (overlay == OV_MANUAL) { manual_draw_top(); return; }
